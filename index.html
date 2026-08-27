@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>فلوسي</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1>فلوسي</h1>
+        <p>GitHub Pages + Google Sheets API + Gmail API — بدون Apps Script</p>
+      </div>
+      <div class="actions">
+        <button id="settingsBtn" class="secondary">الإعدادات</button>
+        <button id="connectBtn">تسجيل الدخول إلى Google</button>
+      </div>
+    </header>
+
+    <section id="statusBox" class="status warning">أدخل الإعدادات ثم سجل الدخول إلى Google.</section>
+
+    <section class="grid kpis">
+      <article class="card"><span>إجمالي الموازنات</span><strong id="totalBudget">—</strong></article>
+      <article class="card"><span>الموازنات المحددة</span><strong id="configuredBudgets">—</strong></article>
+      <article class="card"><span>رسائل Gmail غير المقروءة</span><strong id="gmailUnread">—</strong></article>
+      <article class="card"><span>زمن آخر تحميل</span><strong id="loadTime">—</strong></article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>موازنات الشهر</h2>
+          <p>الحفظ يتم مباشرة عبر Google Sheets API.</p>
+        </div>
+        <div class="month-row">
+          <input id="monthInput" type="month">
+          <button id="refreshBtn" class="secondary">تحديث</button>
+        </div>
+      </div>
+      <div id="budgetGrid" class="budget-grid"></div>
+    </section>
+  </main>
+
+  <dialog id="settingsDialog">
+    <form method="dialog" id="settingsForm">
+      <h2>إعداد الاتصال</h2>
+      <label>Google OAuth Client ID
+        <input id="clientIdInput" autocomplete="off" placeholder="xxxx.apps.googleusercontent.com">
+      </label>
+      <label>Google Spreadsheet ID
+        <input id="sheetIdInput" autocomplete="off" placeholder="معرف ملف Google Sheets">
+      </label>
+      <p class="hint">يتم حفظ القيم في هذا المتصفح فقط. لا تحفظ رموز الدخول أو كلمات المرور في GitHub.</p>
+      <div class="dialog-actions">
+        <button value="cancel" class="secondary">إلغاء</button>
+        <button id="saveSettingsBtn" value="default">حفظ</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="./app.js"></script>
+</body>
+</html>
