@@ -48,12 +48,12 @@
     <form method="dialog" id="settingsForm">
       <h2>إعداد الاتصال</h2>
       <label>Google OAuth Client ID
-        <input id="clientIdInput" autocomplete="off" placeholder="xxxx.apps.googleusercontent.com">
+        <input id="clientIdInput" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="123456789-abc.apps.googleusercontent.com">
       </label>
-      <label>Google Spreadsheet ID
-        <input id="sheetIdInput" autocomplete="off" placeholder="معرف ملف Google Sheets">
+      <label>Google Spreadsheet ID أو رابط الملف
+        <input id="sheetIdInput" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="معرف الملف أو رابط Google Sheets الكامل">
       </label>
-      <p class="hint">يتم حفظ القيم في هذا المتصفح فقط. لا تحفظ رموز الدخول أو كلمات المرور في GitHub.</p>
+      <p class="hint">يمكن لصق رابط Google Sheets كاملًا؛ سيستخرج فلوسي المعرّف تلقائيًا. يتم حفظ القيم في هذا المتصفح فقط، ولا تُحفظ رموز الدخول أو كلمات المرور في GitHub.</p>
       <div class="dialog-actions">
         <button value="cancel" class="secondary">إلغاء</button>
         <button id="saveSettingsBtn" value="default">حفظ</button>
