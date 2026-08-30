@@ -20,13 +20,40 @@ const SCOPES = [
   'https://www.googleapis.com/auth/gmail.readonly'
 ].join(' ');
 
+function normalizeClientId(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
+}
+
+function extractSpreadsheetId(value) {
+  const text = String(value || '').trim();
+  const match = text.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  return match ? match[1] : text.replace(/\s+/g, '');
+}
+
+function isValidClientId(value) {
+  return /^\d+-[a-zA-Z0-9_-]+\.apps\.googleusercontent\.com$/.test(value);
+}
+
 function getConfig() {
-  try { return JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}'); }
-  catch (_) { return {}; }
+  try {
+    const config = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
+    return {
+      clientId: normalizeClientId(config.clientId),
+      sheetId: extractSpreadsheetId(config.sheetId)
+    };
+  } catch (_) {
+    return {};
+  }
 }
 
 function saveConfig(config) {
-  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+  localStorage.setItem(CONFIG_KEY, JSON.stringify({
+    clientId: normalizeClientId(config.clientId),
+    sheetId: extractSpreadsheetId(config.sheetId)
+  }));
 }
 
 function setStatus(message, type = 'warning') {
@@ -65,6 +92,10 @@ function money(value) {
 function initTokenClient() {
   const { clientId } = getConfig();
   if (!clientId) return;
+  if (!isValidClientId(clientId)) {
+    setStatus('Client ID غير صحيح. انسخه كاملًا من Google Cloud ويجب أن يبدأ بأرقام وينتهي بـ apps.googleusercontent.com.', 'error');
+    return;
+  }
   if (!window.google?.accounts?.oauth2) {
     setTimeout(initTokenClient, 300);
     return;
@@ -241,10 +272,15 @@ $('connectBtn').addEventListener('click', () => {
     $('settingsDialog').showModal();
     return;
   }
+  if (!isValidClientId(config.clientId)) {
+    setStatus('Client ID غير صحيح. افتح الإعدادات والصق Client ID كاملًا من Google Cloud.', 'error');
+    $('settingsDialog').showModal();
+    return;
+  }
   if (!APP.tokenClient) initTokenClient();
   setTimeout(() => {
     if (!APP.tokenClient) {
-      setStatus('مكتبة Google لم تكتمل بعد. أعد المحاولة بعد لحظة.', 'warning');
+      setStatus('مكتبة Google لم تكتمل بعد أو Client ID غير صحيح. راجع الإعدادات.', 'warning');
       return;
     }
     APP.tokenClient.requestAccessToken({ prompt: APP.token ? '' : 'consent' });
@@ -260,18 +296,24 @@ $('settingsBtn').addEventListener('click', () => {
 
 $('saveSettingsBtn').addEventListener('click', event => {
   event.preventDefault();
-  const clientId = $('clientIdInput').value.trim();
-  const sheetId = $('sheetIdInput').value.trim();
+  const clientId = normalizeClientId($('clientIdInput').value);
+  const sheetId = extractSpreadsheetId($('sheetIdInput').value);
   if (!clientId || !sheetId) {
     setStatus('أدخل Client ID وSpreadsheet ID.', 'error');
     return;
   }
+  if (!isValidClientId(clientId)) {
+    setStatus('Client ID غير صحيح. يجب أن يكون مثل: 123456789-abc.apps.googleusercontent.com', 'error');
+    return;
+  }
   saveConfig({ clientId, sheetId });
+  $('clientIdInput').value = clientId;
+  $('sheetIdInput').value = sheetId;
   APP.token = '';
   APP.tokenClient = null;
   initTokenClient();
   $('settingsDialog').close();
-  setStatus('تم حفظ الإعدادات. اضغط تسجيل الدخول إلى Google.', 'warning');
+  setStatus('تم حفظ الإعدادات وتصحيح المعرفات تلقائيًا. اضغط تسجيل الدخول إلى Google.', 'warning');
 });
 
 initTokenClient();
