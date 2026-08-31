@@ -3,63 +3,159 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>فلوسي</title>
+  <meta name="theme-color" content="#07111e">
+  <title>فلوسي | لوحة الإدارة المالية</title>
   <link rel="stylesheet" href="./styles.css">
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
-  <main class="app">
-    <header class="topbar">
-      <div>
-        <h1>فلوسي</h1>
-        <p>GitHub Pages + Google Sheets API + Gmail API — بدون Apps Script</p>
-      </div>
-      <div class="actions">
-        <button id="settingsBtn" class="secondary">الإعدادات</button>
-        <button id="connectBtn">تسجيل الدخول إلى Google</button>
-      </div>
-    </header>
-
-    <section id="statusBox" class="status warning">أدخل الإعدادات ثم سجل الدخول إلى Google.</section>
-
-    <section class="grid kpis">
-      <article class="card"><span>إجمالي الموازنات</span><strong id="totalBudget">—</strong></article>
-      <article class="card"><span>الموازنات المحددة</span><strong id="configuredBudgets">—</strong></article>
-      <article class="card"><span>رسائل Gmail غير المقروءة</span><strong id="gmailUnread">—</strong></article>
-      <article class="card"><span>زمن آخر تحميل</span><strong id="loadTime">—</strong></article>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">ف</div>
         <div>
-          <h2>موازنات الشهر</h2>
-          <p>الحفظ يتم مباشرة عبر Google Sheets API.</p>
-        </div>
-        <div class="month-row">
-          <input id="monthInput" type="month">
-          <button id="refreshBtn" class="secondary">تحديث</button>
+          <div class="brand-name">فلوسي</div>
+          <div class="brand-sub">الإدارة المالية الذكية</div>
         </div>
       </div>
-      <div id="budgetGrid" class="budget-grid"></div>
-    </section>
-  </main>
 
-  <dialog id="settingsDialog">
-    <form method="dialog" id="settingsForm">
-      <h2>إعداد الاتصال</h2>
-      <label>Google OAuth Client ID
-        <input id="clientIdInput" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="123456789-abc.apps.googleusercontent.com">
-      </label>
-      <label>Google Spreadsheet ID أو رابط الملف
-        <input id="sheetIdInput" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="معرف الملف أو رابط Google Sheets الكامل">
-      </label>
-      <p class="hint">يمكن لصق رابط Google Sheets كاملًا؛ سيستخرج فلوسي المعرّف تلقائيًا. يتم حفظ القيم في هذا المتصفح فقط، ولا تُحفظ رموز الدخول أو كلمات المرور في GitHub.</p>
-      <div class="dialog-actions">
-        <button value="cancel" class="secondary">إلغاء</button>
-        <button id="saveSettingsBtn" value="default">حفظ</button>
+      <nav class="nav">
+        <button class="nav-item active" type="button"><span>⌂</span> لوحة العرض</button>
+        <button class="nav-item" type="button"><span>▦</span> الموازنات</button>
+        <button class="nav-item" type="button"><span>↔</span> آخر العمليات</button>
+        <button class="nav-item" type="button"><span>◎</span> الحسابات</button>
+      </nav>
+
+      <div class="sidebar-note">
+        <div class="secure-dot"></div>
+        <div>
+          <strong>اتصال آمن</strong>
+          <small>Cloudflare Worker + Google APIs</small>
+        </div>
       </div>
-    </form>
-  </dialog>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">الملخص المالي</div>
+          <h1>لوحة العرض</h1>
+          <p>عرض مباشر من نفس أوراق Google Sheets الحالية، بدون إنشاء أوراق جديدة.</p>
+        </div>
+        <div class="top-actions">
+          <label class="month-control">
+            <span>الشهر</span>
+            <input id="monthInput" type="month">
+          </label>
+          <button id="refreshBtn" class="btn secondary" type="button">تحديث البيانات</button>
+          <button id="loginBtn" class="btn primary" type="button">تسجيل الدخول</button>
+        </div>
+      </header>
+
+      <section id="statusBox" class="status loading">جاري التحقق من الاتصال الآمن...</section>
+
+      <section class="kpi-grid">
+        <article class="kpi-card">
+          <div class="kpi-icon">Σ</div>
+          <div>
+            <span>إجمالي الموازنات</span>
+            <strong id="totalBudget">—</strong>
+            <small>للشهر المحدد</small>
+          </div>
+        </article>
+        <article class="kpi-card">
+          <div class="kpi-icon">✓</div>
+          <div>
+            <span>الموازنات المحددة</span>
+            <strong id="configuredBudgets">—</strong>
+            <small>من الموازنات النشطة</small>
+          </div>
+        </article>
+        <article class="kpi-card">
+          <div class="kpi-icon">✉</div>
+          <div>
+            <span>رسائل Gmail غير المقروءة</span>
+            <strong id="gmailUnread">—</strong>
+            <small>آخر قراءة من Gmail</small>
+          </div>
+        </article>
+        <article class="kpi-card">
+          <div class="kpi-icon">↻</div>
+          <div>
+            <span>آخر تحديث</span>
+            <strong id="loadTime">—</strong>
+            <small id="lastUpdated">لم يتم التحميل بعد</small>
+          </div>
+        </article>
+      </section>
+
+      <section class="section-head">
+        <div>
+          <div class="eyebrow">الحسابات البنكية</div>
+          <h2>الرصيد الحالي</h2>
+        </div>
+        <div class="legend"><span class="dot confirmed"></span> آخر رصيد مؤكد من رسالة بنكية</div>
+      </section>
+
+      <section id="accountsGrid" class="accounts-grid">
+        <article class="account-card skeleton"></article>
+        <article class="account-card skeleton"></article>
+        <article class="account-card skeleton"></article>
+      </section>
+
+      <section class="dashboard-grid">
+        <article class="panel budget-panel">
+          <div class="panel-head">
+            <div>
+              <div class="eyebrow">الموازنات</div>
+              <h2>توزيع الموازنة الشهرية</h2>
+            </div>
+            <strong id="budgetTotalBadge" class="badge">—</strong>
+          </div>
+          <div class="budget-visual">
+            <div id="donut" class="donut"><div><strong id="donutValue">—</strong><span>إجمالي</span></div></div>
+            <div id="budgetBars" class="budget-bars"></div>
+          </div>
+        </article>
+
+        <article class="panel activity-panel">
+          <div class="panel-head">
+            <div>
+              <div class="eyebrow">Gmail</div>
+              <h2>آخر العمليات البنكية</h2>
+            </div>
+            <span class="badge subtle">معاينة فقط</span>
+          </div>
+          <div id="activityList" class="activity-list">
+            <div class="empty-state">جاري تحميل العمليات...</div>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel budget-table-panel">
+        <div class="panel-head">
+          <div>
+            <div class="eyebrow">تفاصيل الموازنات</div>
+            <h2>المؤشرات الحالية</h2>
+          </div>
+          <span class="badge subtle">نفس بيانات ورقة موازنات الحسابات</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>الموازنة</th>
+                <th>الحساب</th>
+                <th>القيمة</th>
+                <th>الحالة</th>
+                <th>نسبة من الإجمالي</th>
+              </tr>
+            </thead>
+            <tbody id="budgetTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
 
   <script src="./app.js"></script>
 </body>
