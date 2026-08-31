@@ -16,6 +16,17 @@ type TokenResponse = {
   error_description?: string;
 };
 
+class OAuthError extends Error {
+  code: string;
+  status: number;
+  constructor(code: string, message: string, status: number) {
+    super(message);
+    this.name = 'OAuthError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
 function corsHeaders(env: Env) {
   return {
     'Access-Control-Allow-Origin': env.FRONTEND_ORIGIN || 'https://m14901507-boop.github.io',
@@ -45,9 +56,9 @@ function requireConfig(env: Env) {
 
 async function getGoogleAccessToken(env: Env): Promise<string> {
   const body = new URLSearchParams({
-    client_id: env.GOOGLE_CLIENT_ID,
-    client_secret: env.GOOGLE_CLIENT_SECRET,
-    refresh_token: env.GOOGLE_REFRESH_TOKEN,
+    client_id: env.GOOGLE_CLIENT_ID.trim(),
+    client_secret: env.GOOGLE_CLIENT_SECRET.trim(),
+    refresh_token: env.GOOGLE_REFRESH_TOKEN.trim(),
     grant_type: 'refresh_token',
   });
 
@@ -57,10 +68,14 @@ async function getGoogleAccessToken(env: Env): Promise<string> {
     body,
   });
 
-  const data = (await response.json()) as TokenResponse;
+  const data = (await response.json().catch(() => ({}))) as TokenResponse;
 
   if (!response.ok || !data.access_token) {
-    throw new Error(data.error_description || data.error || `OAuth token refresh failed (${response.status})`);
+    throw new OAuthError(
+      data.error || 'oauth_refresh_failed',
+      data.error_description || `OAuth token refresh failed (${response.status})`,
+      response.status,
+    );
   }
 
   return data.access_token;
@@ -104,7 +119,7 @@ async function readBudgets(env: Env) {
   const accessToken = await getGoogleAccessToken(env);
   const sheetName = env.BUDGET_SHEET_NAME || 'موازنات الحسابات';
   const range = encodeURIComponent(`'${sheetName}'!A:H`);
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(env.SPREADSHEET_ID)}/values/${range}?valueRenderOption=UNFORMATTED_VALUE`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(env.SPREADSHEET_ID.trim())}/values/${range}?valueRenderOption=UNFORMATTED_VALUE`;
   const data = await googleGet(url, accessToken) as { values?: unknown[][] };
   const values = data.values || [];
 
@@ -160,6 +175,16 @@ export default {
 
       return json({ ok: false, error: 'Not found' }, env, { status: 404 });
     } catch (error) {
+      if (error instanceof OAuthError) {
+        return json({
+          ok: false,
+          stage: 'oauth_refresh',
+          oauth_error: error.code,
+          error: error.message,
+          google_status: error.status,
+        }, env, { status: 500 });
+      }
+
       const message = error instanceof Error ? error.message : String(error);
       return json({ ok: false, error: message }, env, { status: 500 });
     }
