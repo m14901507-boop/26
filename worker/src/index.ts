@@ -10,31 +10,17 @@ export interface Env {
 
 type TokenResponse = {
   access_token?: string;
-  expires_in?: number;
-  scope?: string;
-  token_type?: string;
   error?: string;
   error_description?: string;
 };
 
-type SessionPayload = {
-  v: 1;
-  exp: number;
-};
-
-type GmailHeader = {
-  name?: string;
-  value?: string;
-};
-
+type SessionPayload = { v: 1; exp: number };
+type GmailHeader = { name?: string; value?: string };
 type GmailMessage = {
   id?: string;
-  threadId?: string;
   snippet?: string;
   internalDate?: string;
-  payload?: {
-    headers?: GmailHeader[];
-  };
+  payload?: { headers?: GmailHeader[] };
 };
 
 class OAuthError extends Error {
@@ -65,10 +51,7 @@ function corsHeaders(env: Env) {
 function json(data: unknown, env: Env, init: ResponseInit = {}) {
   return Response.json(data, {
     ...init,
-    headers: {
-      ...corsHeaders(env),
-      ...(init.headers || {}),
-    },
+    headers: { ...corsHeaders(env), ...(init.headers || {}) },
   });
 }
 
@@ -84,13 +67,7 @@ function stringToBase64Url(value: string) {
 
 async function sessionKey(env: Env) {
   const secret = `${env.FLOOSY_PASSWORD || ''}\n${env.GOOGLE_CLIENT_SECRET || ''}`;
-  return crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
+  return crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
 }
 
 async function signValue(value: string, env: Env) {
@@ -109,10 +86,7 @@ function safeEqual(a: string, b: string) {
 }
 
 async function createSession(env: Env) {
-  const payload: SessionPayload = {
-    v: 1,
-    exp: Math.floor(Date.now() / 1000) + SESSION_SECONDS,
-  };
+  const payload: SessionPayload = { v: 1, exp: Math.floor(Date.now() / 1000) + SESSION_SECONDS };
   const encoded = stringToBase64Url(JSON.stringify(payload));
   const signature = await signValue(encoded, env);
   return `${encoded}.${signature}`;
@@ -127,26 +101,27 @@ function getCookie(request: Request, name: string) {
   return null;
 }
 
+function getSessionToken(request: Request) {
+  const auth = request.headers.get('Authorization') || '';
+  if (/^Bearer\s+/i.test(auth)) return auth.replace(/^Bearer\s+/i, '').trim();
+  return getCookie(request, SESSION_COOKIE);
+}
+
 async function validSession(request: Request, env: Env) {
   if (!env.FLOOSY_PASSWORD) return false;
-  const token = getCookie(request, SESSION_COOKIE);
+  const token = getSessionToken(request);
   if (!token) return false;
-
   const dot = token.lastIndexOf('.');
   if (dot <= 0) return false;
   const encoded = token.slice(0, dot);
   const signature = token.slice(dot + 1);
   const expected = await signValue(encoded, env);
   if (!safeEqual(signature, expected)) return false;
-
   try {
     const padded = encoded.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - encoded.length % 4) % 4);
-    const jsonText = decodeURIComponent(
-      Array.from(atob(padded))
-        .map((c) => `%${c.charCodeAt(0).toString(16).padStart(2, '0')}`)
-        .join(''),
-    );
-    const payload = JSON.parse(jsonText) as SessionPayload;
+    const raw = atob(padded);
+    const bytes = Uint8Array.from(raw, c => c.charCodeAt(0));
+    const payload = JSON.parse(new TextDecoder().decode(bytes)) as SessionPayload;
     return payload.v === 1 && payload.exp > Math.floor(Date.now() / 1000);
   } catch {
     return false;
@@ -155,54 +130,16 @@ async function validSession(request: Request, env: Env) {
 
 async function passwordMatches(input: string, env: Env) {
   if (!env.FLOOSY_PASSWORD) return false;
-  const inputHash = new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(input)));
-  const savedHash = new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(env.FLOOSY_PASSWORD)));
-  if (inputHash.length !== savedHash.length) return false;
+  const a = new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(input)));
+  const b = new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(env.FLOOSY_PASSWORD)));
+  if (a.length !== b.length) return false;
   let diff = 0;
-  for (let i = 0; i < inputHash.length; i++) diff |= inputHash[i] ^ savedHash[i];
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
   return diff === 0;
 }
 
 function loginPage() {
-  return new Response(`<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>تسجيل الدخول - Floosy</title>
-  <style>
-    body{font-family:system-ui,sans-serif;background:#f6f8fb;margin:0;display:grid;place-items:center;min-height:100vh;color:#172033}
-    main{width:min(420px,calc(100% - 32px));background:#fff;border:1px solid #e6eaf0;border-radius:18px;padding:28px;box-shadow:0 14px 40px rgba(20,35,60,.08)}
-    h1{margin:0 0 8px;font-size:28px} p{color:#657083;margin:0 0 22px}
-    input,button{width:100%;box-sizing:border-box;border-radius:12px;font-size:16px;padding:13px}
-    input{border:1px solid #ccd4df;margin-bottom:12px} button{border:0;background:#1769ff;color:#fff;font-weight:700;cursor:pointer}
-    #msg{margin-top:14px;font-size:14px}
-  </style>
-</head>
-<body>
-<main>
-  <h1>Floosy</h1>
-  <p>أدخل كلمة المرور الخاصة بالنظام.</p>
-  <form id="f">
-    <input id="p" type="password" autocomplete="current-password" placeholder="كلمة المرور" required />
-    <button type="submit">دخول</button>
-  </form>
-  <div id="msg"></div>
-</main>
-<script>
-const f=document.getElementById('f'),p=document.getElementById('p'),m=document.getElementById('msg');
-f.addEventListener('submit',async(e)=>{
-  e.preventDefault();m.textContent='جاري التحقق...';
-  const r=await fetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({password:p.value})});
-  const d=await r.json().catch(()=>({}));
-  if(r.ok){m.textContent='تم تسجيل الدخول بنجاح ✅';p.value='';}
-  else{m.textContent=d.error||'تعذر تسجيل الدخول';}
-});
-</script>
-</body>
-</html>`, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
-  });
+  return new Response(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Floosy Login</title><style>body{font-family:system-ui;background:#07111e;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}main{width:min(420px,calc(100% - 32px));background:#0d1b2a;border:1px solid #26384a;border-radius:18px;padding:28px}input,button{width:100%;box-sizing:border-box;padding:13px;border-radius:12px;font-size:16px}input{margin:12px 0;background:#07111e;color:#fff;border:1px solid #26384a}button{border:0;background:#2563eb;color:#fff;font-weight:700}</style></head><body><main><h1>Floosy</h1><p>أدخل كلمة المرور.</p><form id="f"><input id="p" type="password" required><button>دخول</button></form><div id="m"></div></main><script>f.onsubmit=async e=>{e.preventDefault();m.textContent='جاري التحقق...';const r=await fetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p.value})});const d=await r.json();m.textContent=r.ok?'تم تسجيل الدخول بنجاح ✅ يمكنك العودة إلى لوحة Floosy.':(d.error||'تعذر تسجيل الدخول');p.value='';}</script></body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
 }
 
 function requireConfig(env: Env) {
@@ -221,36 +158,16 @@ async function getGoogleAccessToken(env: Env): Promise<string> {
     refresh_token: env.GOOGLE_REFRESH_TOKEN.trim(),
     grant_type: 'refresh_token',
   });
-
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  });
-
-  const data = (await response.json().catch(() => ({}))) as TokenResponse;
-  if (!response.ok || !data.access_token) {
-    throw new OAuthError(
-      data.error || 'oauth_refresh_failed',
-      data.error_description || `OAuth token refresh failed (${response.status})`,
-      response.status,
-    );
-  }
+  const response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+  const data = await response.json().catch(() => ({})) as TokenResponse;
+  if (!response.ok || !data.access_token) throw new OAuthError(data.error || 'oauth_refresh_failed', data.error_description || `OAuth token refresh failed (${response.status})`, response.status);
   return data.access_token;
 }
 
 async function googleGet(url: string, accessToken: string) {
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: 'application/json',
-    },
-  });
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' } });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message = (data as any)?.error?.message || `Google API request failed (${response.status})`;
-    throw new Error(message);
-  }
+  if (!response.ok) throw new Error((data as any)?.error?.message || `Google API request failed (${response.status})`);
   return data;
 }
 
@@ -268,192 +185,86 @@ async function readBudgets(env: Env) {
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(env.SPREADSHEET_ID.trim())}/values/${range}?valueRenderOption=UNFORMATTED_VALUE`;
   const data = await googleGet(url, accessToken) as { values?: unknown[][] };
   const values = data.values || [];
-  return {
-    ok: true,
-    sheet: sheetName,
-    headers: values[0] || [],
-    rows: values.slice(1),
-    rowCount: Math.max(values.length - 1, 0),
-  };
+  return { ok: true, sheet: sheetName, headers: values[0] || [], rows: values.slice(1), rowCount: Math.max(values.length - 1, 0) };
 }
 
 async function unreadGmail(env: Env) {
   const accessToken = await getGoogleAccessToken(env);
-  const url = 'https://gmail.googleapis.com/gmail/v1/users/me/messages?q=is%3Aunread&maxResults=1';
-  const data = await googleGet(url, accessToken) as { resultSizeEstimate?: number };
+  const data = await googleGet('https://gmail.googleapis.com/gmail/v1/users/me/messages?q=is%3Aunread&maxResults=1', accessToken) as { resultSizeEstimate?: number };
   return { ok: true, unread: Number(data.resultSizeEstimate || 0) };
 }
 
 function headerValue(message: GmailMessage, name: string) {
-  const headers = message.payload?.headers || [];
-  const found = headers.find((h) => (h.name || '').toLowerCase() === name.toLowerCase());
-  return found?.value || '';
-}
-
-function detectBankMessage(text: string) {
-  return /\b(OMR|RO|debited|credited|debit card|credit card|ATM|transaction|payment|purchase|withdrawal|account)\b/i.test(text);
+  const h = (message.payload?.headers || []).find(x => (x.name || '').toLowerCase() === name.toLowerCase());
+  return h?.value || '';
 }
 
 function extractAmount(text: string) {
-  const patterns = [
-    /(?:OMR|RO|O\.?R\.?)\s*([0-9][0-9,]*(?:\.[0-9]{1,3})?)/i,
-    /([0-9][0-9,]*(?:\.[0-9]{1,3})?)\s*(?:OMR|RO|O\.?R\.?)/i,
-  ];
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match?.[1]) return Number(match[1].replace(/,/g, ''));
-  }
+  const patterns = [/(?:OMR|RO|O\.?R\.?)\s*([0-9][0-9,]*(?:\.[0-9]{1,3})?)/i,/([0-9][0-9,]*(?:\.[0-9]{1,3})?)\s*(?:OMR|RO|O\.?R\.?)/i];
+  for (const p of patterns) { const m = text.match(p); if (m?.[1]) return Number(m[1].replace(/,/g, '')); }
   return null;
 }
 
 function detectOperationType(text: string) {
+  if (/POS Purchase|Debit Card.*utili[sz]ed|purchase/i.test(text)) return 'مصروف/شراء بالبطاقة';
   if (/\bcredited\b/i.test(text)) return 'دخل/تحويل وارد';
   if (/\bdebited\b/i.test(text)) return 'مصروف/تحويل صادر';
-  if (/\b(withdrawal|withdrawn|ATM)\b/i.test(text)) return 'سحب نقدي';
-  if (/\b(payment|purchase|POS)\b/i.test(text)) return 'شراء/دفع';
+  if (/\b(withdrawal|withdrawn|ATM)\b/i.test(text)) return 'مصروف/سحب نقدي';
   return 'غير محدد';
 }
 
 function senderName(from: string) {
-  const match = from.match(/^\s*"?([^"<]+?)"?\s*</);
-  return (match?.[1] || from.split('@')[0] || from).trim();
+  const m = from.match(/^\s*"?([^"<]+?)"?\s*</);
+  return (m?.[1] || from.split('@')[0] || from).replace(/[<>]/g, '').trim();
 }
 
 async function recentBankMessages(env: Env) {
   const accessToken = await getGoogleAccessToken(env);
-  const query = 'newer_than:180d {OMR debited credited "debit card" "credit card" ATM transaction payment purchase withdrawal}';
-  const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=40`;
-  const list = await googleGet(listUrl, accessToken) as { messages?: Array<{ id?: string }> };
-  const refs = (list.messages || []).filter((m) => m.id).slice(0, 40);
-
-  const details = await Promise.all(
-    refs.map(async (ref) => {
-      const id = ref.id as string;
-      const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`;
-      return await googleGet(url, accessToken) as GmailMessage;
-    }),
-  );
-
-  const messages = details
-    .map((message) => {
-      const from = headerValue(message, 'From');
-      const subject = headerValue(message, 'Subject');
-      const dateHeader = headerValue(message, 'Date');
-      const snippet = (message.snippet || '').replace(/\s+/g, ' ').trim();
-      const combined = `${from}\n${subject}\n${snippet}`;
-      return {
-        id: message.id || '',
-        bank: senderName(from),
-        from,
-        subject,
-        date: dateHeader || (message.internalDate ? new Date(Number(message.internalDate)).toISOString() : ''),
-        amount: extractAmount(combined),
-        operationType: detectOperationType(combined),
-        preview: snippet.slice(0, 280),
-        isBankLike: detectBankMessage(combined),
-      };
-    })
-    .filter((item) => item.isBankLike)
-    .slice(0, 10)
-    .map(({ isBankLike, ...item }) => item);
-
-  return {
-    ok: true,
-    mode: 'preview-only',
-    savedToSheet: false,
-    count: messages.length,
-    messages,
-  };
+  const q = 'newer_than:180d {OMR debited credited "debit card" "credit card" ATM transaction payment purchase withdrawal}';
+  const list = await googleGet(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(q)}&maxResults=40`, accessToken) as { messages?: Array<{ id?: string }> };
+  const refs = (list.messages || []).filter(x => x.id).slice(0, 40);
+  const details = await Promise.all(refs.map(async ref => googleGet(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(ref.id as string)}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`, accessToken) as Promise<GmailMessage>));
+  const messages = details.map(message => {
+    const from = headerValue(message, 'From');
+    const subject = headerValue(message, 'Subject');
+    const date = headerValue(message, 'Date') || (message.internalDate ? new Date(Number(message.internalDate)).toISOString() : '');
+    const preview = (message.snippet || '').replace(/\s+/g, ' ').trim();
+    const combined = `${from}\n${subject}\n${preview}`;
+    return { id: message.id || '', bank: senderName(from), from, subject, date, amount: extractAmount(combined), operationType: detectOperationType(combined), preview: preview.slice(0, 500) };
+  }).filter(x => /OMR|debited|credited|transaction|purchase|payment|debit card|ATM/i.test(`${x.subject} ${x.preview}`)).slice(0, 10);
+  return { ok: true, mode: 'preview-only', savedToSheet: false, count: messages.length, messages };
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders(env) });
-    }
-
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(env) });
     try {
-      if (url.pathname === '/' || url.pathname === '/health') {
-        return json({
-          ok: true,
-          service: 'floosy-api',
-          runtime: 'cloudflare-workers',
-          time: new Date().toISOString(),
-        }, env);
-      }
-
-      if (url.pathname === '/login' && request.method === 'GET') {
-        return loginPage();
-      }
+      if (url.pathname === '/' || url.pathname === '/health') return json({ ok: true, service: 'floosy-api', runtime: 'cloudflare-workers', time: new Date().toISOString() }, env);
+      if (url.pathname === '/login' && request.method === 'GET') return loginPage();
 
       if (url.pathname === '/auth/login' && request.method === 'POST') {
-        if (!env.FLOOSY_PASSWORD) {
-          return json({ ok: false, error: 'FLOOSY_PASSWORD is not configured' }, env, { status: 503 });
-        }
+        if (!env.FLOOSY_PASSWORD) return json({ ok: false, error: 'FLOOSY_PASSWORD is not configured' }, env, { status: 503 });
         const body = await request.json().catch(() => ({})) as { password?: string };
-        if (!body.password || !(await passwordMatches(body.password, env))) {
-          return json({ ok: false, error: 'كلمة المرور غير صحيحة' }, env, { status: 401 });
-        }
+        if (!body.password || !(await passwordMatches(body.password, env))) return json({ ok: false, error: 'كلمة المرور غير صحيحة' }, env, { status: 401 });
         const session = await createSession(env);
-        return json({ ok: true, authenticated: true }, env, {
-          headers: {
-            'Set-Cookie': `${SESSION_COOKIE}=${session}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${SESSION_SECONDS}`,
-            'Cache-Control': 'no-store',
-          },
-        });
+        return json({ ok: true, authenticated: true, session }, env, { headers: { 'Set-Cookie': `${SESSION_COOKIE}=${session}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${SESSION_SECONDS}`, 'Cache-Control': 'no-store' } });
       }
 
-      if (url.pathname === '/auth/logout' && request.method === 'POST') {
-        return json({ ok: true }, env, {
-          headers: {
-            'Set-Cookie': `${SESSION_COOKIE}=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0`,
-            'Cache-Control': 'no-store',
-          },
-        });
-      }
-
-      if (url.pathname === '/auth/status') {
-        return json({ ok: true, authenticated: await validSession(request, env) }, env, {
-          headers: { 'Cache-Control': 'no-store' },
-        });
-      }
+      if (url.pathname === '/auth/logout' && request.method === 'POST') return json({ ok: true }, env, { headers: { 'Set-Cookie': `${SESSION_COOKIE}=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0`, 'Cache-Control': 'no-store' } });
+      if (url.pathname === '/auth/status') return json({ ok: true, authenticated: await validSession(request, env) }, env, { headers: { 'Cache-Control': 'no-store' } });
 
       if (url.pathname.startsWith('/api/')) {
-        if (!(await validSession(request, env))) {
-          return json({ ok: false, error: 'Unauthorized' }, env, { status: 401 });
-        }
-
-        if (url.pathname === '/api/google/status') {
-          return json(await googleStatus(env), env);
-        }
-        if (url.pathname === '/api/budgets') {
-          return json(await readBudgets(env), env);
-        }
-        if (url.pathname === '/api/gmail/unread') {
-          return json(await unreadGmail(env), env);
-        }
-        if (url.pathname === '/api/gmail/recent-bank-messages') {
-          return json(await recentBankMessages(env), env, {
-            headers: { 'Cache-Control': 'no-store' },
-          });
-        }
+        if (!(await validSession(request, env))) return json({ ok: false, error: 'Unauthorized' }, env, { status: 401 });
+        if (url.pathname === '/api/google/status') return json(await googleStatus(env), env);
+        if (url.pathname === '/api/budgets') return json(await readBudgets(env), env);
+        if (url.pathname === '/api/gmail/unread') return json(await unreadGmail(env), env);
+        if (url.pathname === '/api/gmail/recent-bank-messages') return json(await recentBankMessages(env), env);
       }
-
       return json({ ok: false, error: 'Not found' }, env, { status: 404 });
     } catch (error) {
-      if (error instanceof OAuthError) {
-        return json({
-          ok: false,
-          stage: 'oauth_refresh',
-          oauth_error: error.code,
-          error: error.message,
-          google_status: error.status,
-        }, env, { status: 500 });
-      }
-      const message = error instanceof Error ? error.message : String(error);
-      return json({ ok: false, error: message }, env, { status: 500 });
+      if (error instanceof OAuthError) return json({ ok: false, stage: 'oauth_refresh', oauth_error: error.code, error: error.message, google_status: error.status }, env, { status: 500 });
+      return json({ ok: false, error: error instanceof Error ? error.message : String(error) }, env, { status: 500 });
     }
   },
 };
