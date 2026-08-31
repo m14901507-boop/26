@@ -22,6 +22,21 @@ type SessionPayload = {
   exp: number;
 };
 
+type GmailHeader = {
+  name?: string;
+  value?: string;
+};
+
+type GmailMessage = {
+  id?: string;
+  threadId?: string;
+  snippet?: string;
+  internalDate?: string;
+  payload?: {
+    headers?: GmailHeader[];
+  };
+};
+
 class OAuthError extends Error {
   code: string;
   status: number;
@@ -269,6 +284,88 @@ async function unreadGmail(env: Env) {
   return { ok: true, unread: Number(data.resultSizeEstimate || 0) };
 }
 
+function headerValue(message: GmailMessage, name: string) {
+  const headers = message.payload?.headers || [];
+  const found = headers.find((h) => (h.name || '').toLowerCase() === name.toLowerCase());
+  return found?.value || '';
+}
+
+function detectBankMessage(text: string) {
+  return /\b(OMR|RO|debited|credited|debit card|credit card|ATM|transaction|payment|purchase|withdrawal|account)\b/i.test(text);
+}
+
+function extractAmount(text: string) {
+  const patterns = [
+    /(?:OMR|RO|O\.?R\.?)\s*([0-9][0-9,]*(?:\.[0-9]{1,3})?)/i,
+    /([0-9][0-9,]*(?:\.[0-9]{1,3})?)\s*(?:OMR|RO|O\.?R\.?)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) return Number(match[1].replace(/,/g, ''));
+  }
+  return null;
+}
+
+function detectOperationType(text: string) {
+  if (/\bcredited\b/i.test(text)) return 'دخل/تحويل وارد';
+  if (/\bdebited\b/i.test(text)) return 'مصروف/تحويل صادر';
+  if (/\b(withdrawal|withdrawn|ATM)\b/i.test(text)) return 'سحب نقدي';
+  if (/\b(payment|purchase|POS)\b/i.test(text)) return 'شراء/دفع';
+  return 'غير محدد';
+}
+
+function senderName(from: string) {
+  const match = from.match(/^\s*"?([^"<]+?)"?\s*</);
+  return (match?.[1] || from.split('@')[0] || from).trim();
+}
+
+async function recentBankMessages(env: Env) {
+  const accessToken = await getGoogleAccessToken(env);
+  const query = 'newer_than:180d {OMR debited credited "debit card" "credit card" ATM transaction payment purchase withdrawal}';
+  const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=40`;
+  const list = await googleGet(listUrl, accessToken) as { messages?: Array<{ id?: string }> };
+  const refs = (list.messages || []).filter((m) => m.id).slice(0, 40);
+
+  const details = await Promise.all(
+    refs.map(async (ref) => {
+      const id = ref.id as string;
+      const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`;
+      return await googleGet(url, accessToken) as GmailMessage;
+    }),
+  );
+
+  const messages = details
+    .map((message) => {
+      const from = headerValue(message, 'From');
+      const subject = headerValue(message, 'Subject');
+      const dateHeader = headerValue(message, 'Date');
+      const snippet = (message.snippet || '').replace(/\s+/g, ' ').trim();
+      const combined = `${from}\n${subject}\n${snippet}`;
+      return {
+        id: message.id || '',
+        bank: senderName(from),
+        from,
+        subject,
+        date: dateHeader || (message.internalDate ? new Date(Number(message.internalDate)).toISOString() : ''),
+        amount: extractAmount(combined),
+        operationType: detectOperationType(combined),
+        preview: snippet.slice(0, 280),
+        isBankLike: detectBankMessage(combined),
+      };
+    })
+    .filter((item) => item.isBankLike)
+    .slice(0, 10)
+    .map(({ isBankLike, ...item }) => item);
+
+  return {
+    ok: true,
+    mode: 'preview-only',
+    savedToSheet: false,
+    count: messages.length,
+    messages,
+  };
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -336,6 +433,11 @@ export default {
         }
         if (url.pathname === '/api/gmail/unread') {
           return json(await unreadGmail(env), env);
+        }
+        if (url.pathname === '/api/gmail/recent-bank-messages') {
+          return json(await recentBankMessages(env), env, {
+            headers: { 'Cache-Control': 'no-store' },
+          });
         }
       }
 
