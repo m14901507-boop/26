@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "floosy-api",
-  "main": "worker/src/router.ts",
+  "main": "worker/src/router2.ts",
   "compatibility_date": "2026-08-30",
   "keep_vars": true
 }
