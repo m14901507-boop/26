@@ -1,78 +1,30 @@
 (()=>{
+  const API='https://floosy-api.m14901507.workers.dev';
   const nav=document.getElementById('nav');
   const main=document.querySelector('.main');
   const filter=document.querySelector('.filterbar');
   const sync=document.querySelector('.sync');
+  const pageTitle=document.getElementById('pageTitle');
   if(!nav||!main)return;
-
-  function ensurePage(id,title,src){
-    let section=document.getElementById(id);
-    if(!section){
-      section=document.createElement('section');
-      section.id=id;
-      section.className='page embedded-page';
-      section.innerHTML=`<div class="embedded-shell"><iframe id="${id}Frame" title="${title}" src="${src}" loading="eager"></iframe></div>`;
-      const footer=document.querySelector('.footer');
-      if(footer)main.insertBefore(section,footer);else main.appendChild(section);
-    }
-    return section;
-  }
-
-  ensurePage('rentals','الإيجارات','rentals.html?embed=1');
-  ensurePage('associations','الجمعيات','associations.html?embed=1');
-
-  function replaceLink(selector,page,label,cls){
-    const old=nav.querySelector(selector);
-    if(!old)return null;
-    if(old.tagName==='BUTTON'){
-      old.dataset.page=page;
-      return old;
-    }
-    const b=document.createElement('button');
-    b.type='button';
-    b.className=`nav-btn ${cls}`;
-    b.dataset.page=page;
-    b.textContent=label;
-    old.replaceWith(b);
-    return b;
-  }
-
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money=v=>Number(v||0).toLocaleString('en-US',{minimumFractionDigits:3,maximumFractionDigits:3})+' ر.ع';
+  const norm=s=>String(s||'').toLowerCase().replace(/[\s_\-]+/g,'');
+  async function req(path,opt={}){const token=sessionStorage.getItem('floosy_preview_session');const r=await fetch(API+path,{...opt,headers:{Accept:'application/json',...(opt.headers||{}),...(token?{Authorization:'Bearer '+token}:{})},credentials:'omit'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'API '+r.status);return d;}
+  function idx(h,ps){for(let i=0;i<h.length;i++){const x=norm(h[i]);if(ps.some(p=>p.test(x)))return i;}return-1;}
+  function replaceLink(selector,page,label,cls){const old=nav.querySelector(selector);if(!old)return null;const b=document.createElement('button');b.type='button';b.className=`nav-btn ${cls}`;b.dataset.page=page;b.textContent=label;old.replaceWith(b);return b;}
   replaceLink('.nav-special-rent','rentals','⌂ الإيجارات','nav-special-rent');
   replaceLink('.nav-special-assoc','associations','◈ الجمعيات','nav-special-assoc');
-
-  function applyView(page){
-    document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id===page));
-    document.querySelectorAll('#nav .nav-btn').forEach(x=>x.classList.toggle('active',x.dataset.page===page));
-    const special=page==='rentals'||page==='associations';
-    if(filter)filter.style.display=special?'none':'';
-    if(sync)sync.style.display=special?'none':'';
-    const title=document.getElementById('pageTitle');
-    const btn=nav.querySelector(`.nav-btn[data-page="${page}"]`);
-    if(title&&btn)title.textContent=btn.textContent.trim();
-    if(special){
-      const frame=document.getElementById(`${page}Frame`);
-      if(frame){
-        frame.style.height='calc(100vh - 125px)';
-        try{frame.contentWindow?.postMessage({type:'floosy-refresh'},location.origin)}catch(_){}
-      }
-    }
-  }
-
-  nav.addEventListener('click',e=>{
-    const b=e.target.closest('.nav-btn');
-    if(!b||!b.dataset.page)return;
-    if(b.dataset.page==='rentals'||b.dataset.page==='associations'){
-      e.preventDefault();
-      e.stopPropagation();
-      applyView(b.dataset.page);
-    }else requestAnimationFrame(()=>{
-      if(filter)filter.style.display='';
-      if(sync)sync.style.display='';
-    });
-  },true);
-
-  window.addEventListener('message',e=>{
-    if(e.origin!==location.origin)return;
-    if(e.data?.type==='floosy-back')applyView('dashboard');
-  });
+  const footer=document.querySelector('.footer');
+  function insert(section){if(footer)main.insertBefore(section,footer);else main.appendChild(section);}
+  const rentals=document.createElement('section');rentals.id='rentals';rentals.className='page';rentals.innerHTML=`<div class="kpis"><div class="metric"><label>عدد المستأجرين</label><strong id="rTenantCount">0</strong></div><div class="metric green"><label>إجمالي الإيجار الشهري</label><strong id="rMonthlyTotal">0.000 ر.ع</strong></div><div class="metric gold"><label>إيصالات مسجلة</label><strong id="rReceiptCount">0</strong></div><div class="metric red"><label>متأخر / متابعة</label><strong id="rLateCount">0</strong></div></div><div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2 style="margin:0">سجل الإيجارات</h2><button id="rRefresh" class="btn primary small">تحديث السجل</button></div><div id="rStatus" class="insight warn" style="margin-top:10px">جاري التحميل…</div></div><div class="middle" style="grid-template-columns:minmax(300px,.8fr) minmax(0,1.6fr)"><div class="panel"><h2>إضافة / تعديل مستأجر</h2><form id="rTenantForm" style="display:grid;gap:9px"><input type="hidden" id="rTenantId"><input id="rName" class="control" placeholder="اسم المستأجر" required><input id="rEmail" class="control" type="email" placeholder="البريد الإلكتروني"><input id="rUnit" class="control" placeholder="الوحدة / العقار"><div style="display:grid;grid-template-columns:1fr 1fr;gap:9px"><input id="rRent" class="control" type="number" step="0.001" min="0" placeholder="الإيجار الشهري"><input id="rDueDay" class="control" type="number" min="1" max="31" placeholder="يوم الاستحقاق"></div><select id="rTenantStatus" class="control"><option>نشط</option><option>متأخر</option><option>متوقف</option></select><textarea id="rNotes" class="control" placeholder="ملاحظات" style="min-height:72px;padding-top:10px"></textarea><button class="btn primary">حفظ المستأجر</button></form><div id="rReceiptBox" style="display:none;margin-top:14px"><hr style="border:0;border-top:1px solid var(--line)"><h2>تسجيل استلام</h2><div id="rReceiptTenant" class="small"></div><form id="rReceiptForm" style="display:grid;gap:9px;margin-top:8px"><input type="hidden" id="rReceiptTenantId"><div style="display:grid;grid-template-columns:1fr 1fr;gap:9px"><input id="rReceiptAmount" class="control" type="number" step="0.001" min="0" placeholder="المبلغ" required><input id="rReceiptDate" class="control" type="date" required></div><input id="rReceiptNote" class="control" placeholder="ملاحظة الإيصال"><label><input id="rSendEmail" type="checkbox"> إرسال إيصال وشكر بالبريد</label><button class="btn primary">تسجيل الاستلام</button></form></div></div><div class="panel"><h2>المستأجرون</h2><div class="table-wrap"><table class="table"><thead><tr><th>المستأجر</th><th>البريد</th><th>الوحدة</th><th>الإيجار</th><th>الاستحقاق</th><th>الحالة</th><th>آخر استلام</th><th>آخر مبلغ</th><th>الإجراءات</th></tr></thead><tbody id="rTenantRows"></tbody></table></div><h2 style="margin-top:18px">سجل الإيصالات</h2><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>المستأجر</th><th>المبلغ</th><th>الإرسال</th><th>الملاحظات</th></tr></thead><tbody id="rReceiptRows"></tbody></table></div></div></div>`;insert(rentals);
+  const associations=document.createElement('section');associations.id='associations';associations.className='page';associations.innerHTML=`<div class="kpis"><div class="metric green"><label>إجمالي الداخل</label><strong id="aIncome">0.000 ر.ع</strong></div><div class="metric red"><label>إجمالي الخارج</label><strong id="aExpense">0.000 ر.ع</strong></div><div class="metric"><label>عدد العمليات</label><strong id="aCount">0</strong></div><div class="metric gold"><label>آخر حركة</label><strong id="aLast">—</strong></div></div><div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2 style="margin:0">الجمعيات</h2><button id="aRefresh" class="btn primary small">تحديث السجل</button></div><div id="aStatus" class="insight warn" style="margin-top:10px">جاري التحميل…</div></div><div class="middle" style="grid-template-columns:.8fr 1.6fr"><div class="panel"><h2>توزيع عمليات الجمعية</h2><div id="aBars" class="bars"></div></div><div class="panel"><h2>سجل الجمعيات</h2><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البند</th><th>الحركة</th><th>المبلغ</th><th>الحساب / البنك</th><th>الوصف</th></tr></thead><tbody id="aRows"></tbody></table></div></div></div>`;insert(associations);
+  let RDATA={rentals:[],receipts:[]};const $=id=>document.getElementById(id);
+  function renderRentals(){const r=RDATA.rentals||[],rec=RDATA.receipts||[];$('rTenantCount').textContent=r.filter(x=>x.active!==false).length;$('rMonthlyTotal').textContent=money(r.filter(x=>x.active!==false).reduce((s,x)=>s+Number(x.monthlyRent||0),0));$('rReceiptCount').textContent=rec.length;$('rLateCount').textContent=r.filter(x=>String(x.status).includes('متأخر')).length;$('rTenantRows').innerHTML=r.map(x=>`<tr><td><b>${esc(x.name||'—')}</b></td><td>${esc(x.email||'—')}</td><td>${esc(x.unit||'—')}</td><td>${money(x.monthlyRent)}</td><td>${x.dueDay||'—'}</td><td>${esc(x.status||'—')}</td><td>${esc(x.lastReceiptDate||'—')}</td><td>${money(x.lastReceiptAmount)}</td><td><div style="display:flex;gap:5px"><button class="btn small r-edit" data-id="${esc(x.tenantId)}">تعديل</button><button class="btn small primary r-receipt" data-id="${esc(x.tenantId)}">استلام</button>${x.publicToken?`<button class="btn small r-link" data-token="${esc(x.publicToken)}">رابط</button>`:''}</div></td></tr>`).join('');const names=new Map(r.map(x=>[x.tenantId,x.name]));$('rReceiptRows').innerHTML=rec.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(names.get(x.tenantId)||x.tenantId)}</td><td class="in">${money(x.amount)}</td><td>${esc(x.sendStatus||'—')}</td><td>${esc(x.notes||'—')}</td></tr>`).join('');}
+  async function loadRentals(){try{$('rStatus').textContent='جاري تحميل سجل الإيجارات…';RDATA=await req('/api/rentals');renderRentals();$('rStatus').textContent=`تم تحميل ${(RDATA.rentals||[]).length} مستأجر و${(RDATA.receipts||[]).length} إيصال`;}catch(e){$('rStatus').textContent=e.message;}}
+  $('rTenantForm').addEventListener('submit',async e=>{e.preventDefault();try{await req('/api/rentals/upsert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenantId:$('rTenantId').value,name:$('rName').value,email:$('rEmail').value,unit:$('rUnit').value,monthlyRent:Number($('rRent').value||0),dueDay:Number($('rDueDay').value||0),status:$('rTenantStatus').value,notes:$('rNotes').value})});e.target.reset();$('rTenantId').value='';await loadRentals();$('rStatus').textContent='تم حفظ المستأجر';}catch(err){$('rStatus').textContent=err.message;}});
+  $('rTenantRows').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.classList.contains('r-edit')){const x=RDATA.rentals.find(t=>t.tenantId===b.dataset.id);if(!x)return;$('rTenantId').value=x.tenantId;$('rName').value=x.name;$('rEmail').value=x.email;$('rUnit').value=x.unit;$('rRent').value=x.monthlyRent;$('rDueDay').value=x.dueDay;$('rTenantStatus').value=x.status;$('rNotes').value=x.notes;}if(b.classList.contains('r-receipt')){const x=RDATA.rentals.find(t=>t.tenantId===b.dataset.id);if(!x)return;$('rReceiptTenantId').value=x.tenantId;$('rReceiptTenant').textContent=`المستأجر: ${x.name} — ${x.unit}`;$('rReceiptAmount').value=x.monthlyRent||'';$('rReceiptDate').value=new Date().toISOString().slice(0,10);$('rReceiptBox').style.display='block';}if(b.classList.contains('r-link')){const u=`https://m14901507-boop.github.io/26/preview/tenant.html?t=${encodeURIComponent(b.dataset.token)}`;navigator.clipboard?.writeText(u);$('rStatus').textContent='تم نسخ رابط صفحة المستأجر';}});
+  $('rReceiptForm').addEventListener('submit',async e=>{e.preventDefault();try{const d=await req('/api/rentals/receipt',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenantId:$('rReceiptTenantId').value,amount:Number($('rReceiptAmount').value),date:$('rReceiptDate').value,notes:$('rReceiptNote').value,sendEmail:$('rSendEmail').checked})});$('rReceiptBox').style.display='none';e.target.reset();await loadRentals();$('rStatus').textContent=d.receipt?.sendStatus==='تم الإرسال'?'تم تسجيل الاستلام وإرسال الإيصال':'تم تسجيل الاستلام بنجاح';}catch(err){$('rStatus').textContent=err.message;}});$('rRefresh').addEventListener('click',loadRentals);
+  async function loadAssociations(){try{$('aStatus').textContent='جاري قراءة عمليات الجمعيات…';const o=await req('/api/operations'),h=o.headers||[],m={date:idx(h,[/التاريخ/,/date/]),item:idx(h,[/البند/,/item/]),amount:idx(h,[/المبلغ/,/amount/]),movement:idx(h,[/الحركة/,/نوعالعملية/,/type/]),account:idx(h,[/الحساب/,/البنك/,/account/]),desc:idx(h,[/الوصف/,/الطرف/,/description/,/merchant/])};const data=(o.rows||[]).map(r=>({date:r[m.date],item:String(r[m.item]||''),amount:Math.abs(Number(r[m.amount])||0),movement:String(r[m.movement]||''),account:String(r[m.account]||''),desc:String(r[m.desc]||'')})).filter(x=>/جمعية|جمعيه|association|saving group|مساهمة|مساهمه/.test((x.item+' '+x.desc).toLowerCase()));const inc=data.filter(x=>/دخل|وارد|credit/.test(x.movement.toLowerCase())).reduce((s,x)=>s+x.amount,0),out=data.filter(x=>!/دخل|وارد|credit/.test(x.movement.toLowerCase())).reduce((s,x)=>s+x.amount,0);$('aIncome').textContent=money(inc);$('aExpense').textContent=money(out);$('aCount').textContent=data.length;$('aLast').textContent=data.length?new Date(data.map(x=>new Date(x.date)).sort((a,b)=>b-a)[0]).toLocaleDateString('ar-OM'):'—';const stats=new Map();data.forEach(x=>{const z=stats.get(x.item)||{n:0,v:0};z.n++;z.v+=x.amount;stats.set(x.item,z)});const arr=[...stats].sort((a,b)=>b[1].v-a[1].v),max=Math.max(1,...arr.map(x=>x[1].v));$('aBars').innerHTML=arr.length?arr.slice(0,8).map(([k,v])=>`<div class="bar-row"><span>${esc(k)}</span><div class="track"><div class="fill" style="width:${v.v/max*100}%"></div></div><span class="bar-value"><small class="bar-count">${v.n} عمليات</small><b>${money(v.v)}</b></span></div>`).join(''):'<div class="insight warn">لا توجد عمليات مصنفة كجمعيات حتى الآن.</div>';$('aRows').innerHTML=data.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(x=>`<tr><td>${new Date(x.date).toLocaleDateString('ar-OM')}</td><td>${esc(x.item||'—')}</td><td>${esc(x.movement)}</td><td class="${/دخل|وارد|credit/.test(x.movement.toLowerCase())?'in':'out'}">${money(x.amount)}</td><td>${esc(x.account)}</td><td class="description">${esc(x.desc)}</td></tr>`).join('');$('aStatus').textContent=data.length?`تم العثور على ${data.length} عملية مرتبطة بالجمعيات`:'لا توجد عمليات جمعية مطابقة.';}catch(e){$('aStatus').textContent=e.message;}}$('aRefresh').addEventListener('click',loadAssociations);
+  function showSpecial(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===page));nav.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));if(filter)filter.style.display=['rentals','associations'].includes(page)?'none':'';if(sync)sync.style.display=['rentals','associations'].includes(page)?'none':'';if(pageTitle)pageTitle.textContent=page==='rentals'?'الإيجارات':'الجمعيات';if(page==='rentals')loadRentals();if(page==='associations')loadAssociations();}
+  nav.addEventListener('click',e=>{const b=e.target.closest('.nav-btn');if(!b)return;const p=b.dataset.page;if(p==='rentals'||p==='associations'){e.preventDefault();e.stopImmediatePropagation();showSpecial(p);}else{if(filter)filter.style.display='';if(sync)sync.style.display='';}},true);
 })();
