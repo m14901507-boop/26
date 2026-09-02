@@ -60,9 +60,23 @@ async function reconcile(env:Env,t:string,ops:{headers:Row;rows:Row[]},limit=6){
   return{checked,updated,balancesFound,accountsFixed};
 }
 function accountMeta(key:string){if(key==='AHLI_001')return{bankName:'بنك الأهلي',accountNumber:'001'};if(key==='AHLI_002')return{bankName:'بنك الأهلي',accountNumber:'002'};if(key==='MEETHAQ_21')return{bankName:'ميثاق',accountNumber:'0021'};if(key==='MEETHAQ_22')return{bankName:'ميثاق',accountNumber:'22'};if(key==='SOHAR_7010')return{bankName:'بنك صحار',accountNumber:'7010'};if(key==='SOHAR_7240')return{bankName:'بنك صحار',accountNumber:'7240'};if(key==='DHOFAR')return{bankName:'بنك ظفار',accountNumber:'—'};return{bankName:'',accountNumber:''};}
-function dateTs(v:unknown){const d=new Date(String(v??''));return Number.isFinite(d.getTime())?d.getTime():0;}
+function dateTs(v:unknown){
+  const s=String(v??'').trim();
+  if(!s)return 0;
+  const dmy=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if(dmy){
+    const day=Number(dmy[1]),month=Number(dmy[2]),year=Number(dmy[3]);
+    const hour=Number(dmy[4]||0),minute=Number(dmy[5]||0),second=Number(dmy[6]||0);
+    const t=Date.UTC(year,month-1,day,hour,minute,second);
+    const check=new Date(t);
+    if(check.getUTCFullYear()===year&&check.getUTCMonth()===month-1&&check.getUTCDate()===day)return t;
+    return 0;
+  }
+  const iso=new Date(s);
+  return Number.isFinite(iso.getTime())?iso.getTime():0;
+}
 async function latestBalances(env:Env){const t=await token(env);let ops=await readOps(env,t);const repair=await reconcile(env,t,ops,6);if(repair.updated)ops=await readOps(env,t);const map=new Map<string,{bankName:string;accountNumber:string;balance:number;date:string;messageId:string;ts:number;accountKey:string}>();
-  for(const r of ops.rows){const key=String(r[15]??'').trim(),bal=validNum(r[17]),date=String(r[19]??'').trim();if(!key||bal===null||!date)continue;const meta=accountMeta(key);if(!meta.bankName)continue;const ts=dateTs(date),old=map.get(key);if(!old||ts>old.ts)map.set(key,{...meta,balance:bal,date,messageId:String(r[0]??''),ts,accountKey:key});}
+  for(const r of ops.rows){const key=String(r[15]??'').trim(),bal=validNum(r[17]),date=String(r[19]??'').trim();if(!key||bal===null||!date)continue;const meta=accountMeta(key);if(!meta.bankName)continue;const ts=dateTs(date);if(!ts)continue;const old=map.get(key);if(!old||ts>old.ts)map.set(key,{...meta,balance:bal,date,messageId:String(r[0]??''),ts,accountKey:key});}
   return{ok:true,source:'Google Sheets — العمليات P:T',balances:[...map.values()].map(({ts,...x})=>x),count:map.size,reconcile:repair};
 }
 
