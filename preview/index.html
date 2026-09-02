@@ -14,7 +14,8 @@
   try{
     const base='https://raw.githubusercontent.com/m14901507-boop/26/5db423f3f5b121435988970b7582b0de03196531/preview/index.html';
     let html=await fetch(base,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('تعذر تحميل الواجهة');return r.text()});
-    html=html.replace('</head>','<link rel="stylesheet" href="theme-pro.css?v=2"></head>');
+    html=html.replace('</head>','<link rel="stylesheet" href="theme-pro.css?v=5"></head>');
+    html=html.replace('</body>','<script src="embedded-pages.js?v=1"><\/script></body>');
     document.open();document.write(html);document.close();
   }catch(e){document.body.innerHTML='<div class="boot"><div><b>FLOOSY</b><span>'+String(e.message||e)+'</span></div></div>'}
 })();
