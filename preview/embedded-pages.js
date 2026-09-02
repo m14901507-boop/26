@@ -2,61 +2,77 @@
   const nav=document.getElementById('nav');
   const main=document.querySelector('.main');
   const filter=document.querySelector('.filterbar');
+  const sync=document.querySelector('.sync');
   if(!nav||!main)return;
 
-  function addEmbeddedPage(id,title,src){
-    if(document.getElementById(id))return;
-    const section=document.createElement('section');
-    section.id=id;
-    section.className='page embedded-page';
-    section.innerHTML=`<div class="embedded-shell"><iframe id="${id}Frame" title="${title}" src="${src}" loading="lazy"></iframe></div>`;
-    const footer=document.querySelector('.footer');
-    if(footer)main.insertBefore(section,footer); else main.appendChild(section);
-    const frame=section.querySelector('iframe');
-    frame.addEventListener('load',()=>{
-      try{
-        const d=frame.contentDocument;
-        if(!d)return;
-        const top=d.querySelector('.top');
-        if(top)top.style.display='none';
-        const wrap=d.querySelector('.wrap');
-        if(wrap){wrap.style.maxWidth='none';wrap.style.padding='0';}
-        d.documentElement.style.background='transparent';
-        d.body.style.background='transparent';
-      }catch(e){}
-    });
+  function ensurePage(id,title,src){
+    let section=document.getElementById(id);
+    if(!section){
+      section=document.createElement('section');
+      section.id=id;
+      section.className='page embedded-page';
+      section.innerHTML=`<div class="embedded-shell"><iframe id="${id}Frame" title="${title}" src="${src}" loading="eager"></iframe></div>`;
+      const footer=document.querySelector('.footer');
+      if(footer)main.insertBefore(section,footer);else main.appendChild(section);
+    }
+    return section;
   }
 
-  addEmbeddedPage('rentals','الإيجارات','rentals.html?embed=1');
-  addEmbeddedPage('associations','الجمعيات','associations.html?embed=1');
+  ensurePage('rentals','الإيجارات','rentals.html?embed=1');
+  ensurePage('associations','الجمعيات','associations.html?embed=1');
 
-  const rent=nav.querySelector('.nav-special-rent');
-  const assoc=nav.querySelector('.nav-special-assoc');
-  if(rent){rent.removeAttribute('href');rent.setAttribute('role','button');rent.dataset.page='rentals';}
-  if(assoc){assoc.removeAttribute('href');assoc.setAttribute('role','button');assoc.dataset.page='associations';}
+  function replaceLink(selector,page,label,cls){
+    const old=nav.querySelector(selector);
+    if(!old)return null;
+    if(old.tagName==='BUTTON'){
+      old.dataset.page=page;
+      return old;
+    }
+    const b=document.createElement('button');
+    b.type='button';
+    b.className=`nav-btn ${cls}`;
+    b.dataset.page=page;
+    b.textContent=label;
+    old.replaceWith(b);
+    return b;
+  }
 
-  function syncSpecialView(){
-    const active=nav.querySelector('.nav-btn.active');
-    const special=active&&['rentals','associations'].includes(active.dataset.page);
+  replaceLink('.nav-special-rent','rentals','⌂ الإيجارات','nav-special-rent');
+  replaceLink('.nav-special-assoc','associations','◈ الجمعيات','nav-special-assoc');
+
+  function applyView(page){
+    document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id===page));
+    document.querySelectorAll('#nav .nav-btn').forEach(x=>x.classList.toggle('active',x.dataset.page===page));
+    const special=page==='rentals'||page==='associations';
     if(filter)filter.style.display=special?'none':'';
-    const sync=document.querySelector('.sync');
     if(sync)sync.style.display=special?'none':'';
+    const title=document.getElementById('pageTitle');
+    const btn=nav.querySelector(`.nav-btn[data-page="${page}"]`);
+    if(title&&btn)title.textContent=btn.textContent.trim();
+    if(special){
+      const frame=document.getElementById(`${page}Frame`);
+      if(frame){
+        frame.style.height='calc(100vh - 125px)';
+        try{frame.contentWindow?.postMessage({type:'floosy-refresh'},location.origin)}catch(_){}
+      }
+    }
   }
 
   nav.addEventListener('click',e=>{
     const b=e.target.closest('.nav-btn');
-    if(!b)return;
-    if(['rentals','associations'].includes(b.dataset.page||'')){
+    if(!b||!b.dataset.page)return;
+    if(b.dataset.page==='rentals'||b.dataset.page==='associations'){
       e.preventDefault();
-      requestAnimationFrame(()=>{
-        syncSpecialView();
-        const frame=document.getElementById(`${b.dataset.page}Frame`);
-        if(frame&&frame.contentWindow){
-          try{frame.contentWindow.postMessage({type:'floosy-refresh'},location.origin)}catch(_){}
-        }
-      });
-    }else requestAnimationFrame(syncSpecialView);
-  });
+      e.stopPropagation();
+      applyView(b.dataset.page);
+    }else requestAnimationFrame(()=>{
+      if(filter)filter.style.display='';
+      if(sync)sync.style.display='';
+    });
+  },true);
 
-  syncSpecialView();
+  window.addEventListener('message',e=>{
+    if(e.origin!==location.origin)return;
+    if(e.data?.type==='floosy-back')applyView('dashboard');
+  });
 })();
