@@ -25,14 +25,11 @@
 
     const reasons=[];
     const isExpense=/مصروف|expense|شراء|purchase|سحب/i.test([movement,classification,action].join(' '));
-
-    // حالة المراجعة يجب أن تكون صريحة من الشيت، لا بسبب حقول اختيارية فارغة.
     if(/يحتاج\s*مراجعة|بند\s*المراجعة|مراجعة|review/i.test(combined))reasons.push('حالة البند في دليل البنود تحتاج مراجعة');
-
-    // للمصروف فقط: هذه الحقول الثلاثة ضرورية للتحليل المالي.
     if(isExpense&&!category)reasons.push('الفئة غير محددة');
     if(isExpense&&!period)reasons.push('الفترة غير محددة');
     if(isExpense&&!scope)reasons.push('الصنف/النطاق غير محدد');
+    if(!classification)reasons.push('التصنيف غير محدد');
 
     if(reasons.length)return{state:'review',reasons};
     return{state:'complete',reasons:[]};
@@ -84,11 +81,6 @@
   }
 
   document.getElementById('syncItemsNow')?.addEventListener('click',()=>setTimeout(hardReloadItems,50));
-  document.addEventListener('click',e=>{
-    const save=e.target.closest?.('.save-item');
-    if(save)setTimeout(hardReloadItems,900);
-  },true);
-
   const table=document.getElementById('itemTable');
   if(table)new MutationObserver(()=>requestAnimationFrame(decorate)).observe(table,{childList:true,subtree:true});
   document.getElementById('itemStateFilter')?.addEventListener('change',decorate);
