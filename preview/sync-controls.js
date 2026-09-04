@@ -47,7 +47,7 @@
     try{
       setStatus('جاري مطابقة العمليات مع تصنيفات Gmail الحالية...');
       const r=await req('/api/sync/operations',{method:'POST'});
-      setStatus(`تمت المزامنة — جديد ${Number(r.added||0)}، تم تحديث ${Number(r.updated||0)}، أزيل تصنيف ${Number(r.cleared||0)}`,true);
+      setStatus(`تمت المزامنة — جديد ${Number(r.added||0)}، تم تحديث ${Number(r.updated||0)}، محفوظ دون تغيير ${Number(r.unchanged||0)}`,true);
       await reloadItems();
       await refresh();
     }catch(e){setStatus(e.message||String(e));}
@@ -56,9 +56,4 @@
 
   opsBtn.addEventListener('click',syncOperations);
   itemsBtn.addEventListener('click',reloadItems);
-
-  document.addEventListener('click',e=>{
-    const save=e.target.closest?.('.save-item');
-    if(save)setTimeout(reloadItems,800);
-  },true);
 })();
