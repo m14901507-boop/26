@@ -1,6 +1,9 @@
 (()=>{
   const text=v=>String(v??'').trim();
-  const low=v=>text(v).toLowerCase();
+
+  function itemsData(){
+    try{return Array.isArray(DATA?.items)?DATA.items:[];}catch{return[];}
+  }
 
   function diagnose(r){
     const classification=text(r?.[1]);
@@ -9,26 +12,27 @@
     const action=text(r?.[4]);
     const active=text(r?.[5]);
     const gmailLabel=text(r?.[6]);
+    const syncStatus=text(r?.[7]);
     const category=text(r?.[9]);
     const period=text(r?.[10]);
     const scope=text(r?.[11]);
-    const reasons=[];
+    const combined=[classification,system,movement,action,syncStatus].join(' ');
 
     if(/^(لا|no|false|0|غير نشط)$/i.test(active))return{state:'inactive',reasons:['البند غير نشط']};
-    if(/غير\s*مالي|non.?financial/i.test([system,movement,action].join(' ')))return{state:'nonfinancial',reasons:['مصنف كغير مالي']};
-    if(/تحويل\s*داخلي|تحويلات\s*داخلية|internal.?transfer/i.test([system,movement,action,classification].join(' ')))return{state:'internal',reasons:['تحويل داخلي']};
+    if(/غير\s*مالي|non.?financial/i.test([system,movement,action,classification].join(' ')))return{state:'nonfinancial',reasons:['مصنف كغير مالي']};
+    if(/تحويل\s*داخلي|تحويلات\s*داخلية|internal.?transfer/i.test(combined))return{state:'internal',reasons:['تحويل داخلي']};
+    if(!gmailLabel)return{state:'nolabel',reasons:['لا يوجد معرف تصنيف Gmail']};
 
-    if(!gmailLabel)reasons.push('لا يوجد معرف Gmail');
-    if(!classification)reasons.push('التصنيف غير محدد');
-    if(!system)reasons.push('النظام غير محدد');
-    if(!movement)reasons.push('نوع الحركة غير محدد');
-    if(!action)reasons.push('الإجراء التلقائي غير محدد');
-
+    const reasons=[];
     const isExpense=/مصروف|expense|شراء|purchase|سحب/i.test([movement,classification,action].join(' '));
+
+    // حالة المراجعة يجب أن تكون صريحة من الشيت، لا بسبب حقول اختيارية فارغة.
+    if(/يحتاج\s*مراجعة|بند\s*المراجعة|مراجعة|review/i.test(combined))reasons.push('حالة البند في دليل البنود تحتاج مراجعة');
+
+    // للمصروف فقط: هذه الحقول الثلاثة ضرورية للتحليل المالي.
     if(isExpense&&!category)reasons.push('الفئة غير محددة');
     if(isExpense&&!period)reasons.push('الفترة غير محددة');
-    if(isExpense&&!scope)reasons.push('النطاق غير محدد');
-    if(/مراجعة|review/i.test([action,classification,system,movement].join(' ')))reasons.push('يوجد حقل مضبوط على مراجعة');
+    if(isExpense&&!scope)reasons.push('الصنف/النطاق غير محدد');
 
     if(reasons.length)return{state:'review',reasons};
     return{state:'complete',reasons:[]};
@@ -37,10 +41,18 @@
   const label={review:'يحتاج مراجعة',complete:'مكتمل',nonfinancial:'غير مالي',internal:'تحويل داخلي',inactive:'غير نشط',nolabel:'بدون تصنيف Gmail'};
 
   function decorate(){
-    const items=Array.isArray(window.DATA?.items)?window.DATA.items:[];
-    document.querySelectorAll('#itemTable tr[data-index]').forEach(tr=>{
+    const items=itemsData();
+    const rows=[...document.querySelectorAll('#itemTable tr[data-index]')];
+    const wanted=document.getElementById('itemStateFilter')?.value||'';
+    let visible=0;
+
+    rows.forEach(tr=>{
       const idx=Number(tr.dataset.index),d=diagnose(items[idx]||[]),first=tr.querySelector('td');
       tr.dataset.itemState=d.state;
+      const show=!wanted||d.state===wanted;
+      tr.style.display=show?'':'none';
+      if(show)visible++;
+
       if(!first)return;
       let badge=first.querySelector('.item-state-badge');
       if(!badge){badge=document.createElement('span');badge.className='item-state-badge';first.appendChild(document.createTextNode(' '));first.appendChild(badge);}
@@ -51,19 +63,12 @@
       let reason=first.querySelector('.item-review-reason');
       if(d.state==='review'){
         if(!reason){reason=document.createElement('div');reason.className='item-review-reason';first.appendChild(reason);}
-        reason.textContent='سبب المراجعة: '+d.reasons.join('، ');
+        reason.textContent=d.reasons.join('، ');
       }else if(reason)reason.remove();
     });
 
-    const wanted=document.getElementById('itemStateFilter')?.value||'';
-    let visible=0;
-    document.querySelectorAll('#itemTable tr[data-index]').forEach(tr=>{
-      const show=!wanted||tr.dataset.itemState===wanted;
-      tr.style.display=show?'':'none';
-      if(show)visible++;
-    });
     const kpi=document.querySelector('#itemKpis .metric:first-child strong');
-    if(kpi&&wanted)kpi.textContent=String(visible);
+    if(kpi)kpi.textContent=String(wanted?visible:rows.length);
   }
 
   async function hardReloadItems(){
@@ -73,7 +78,7 @@
       syncBudgetOptions();
       syncDependentFilters();
       renderAll();
-      setTimeout(decorate,0);
+      requestAnimationFrame(decorate);
       setStatus(`تم تحديث دليل البنود — ${DATA.items.length} بند`,true);
     }catch(e){setStatus(e.message||String(e));}
   }
@@ -81,15 +86,18 @@
   document.getElementById('syncItemsNow')?.addEventListener('click',()=>setTimeout(hardReloadItems,50));
   document.addEventListener('click',e=>{
     const save=e.target.closest?.('.save-item');
-    if(save)setTimeout(hardReloadItems,1000);
+    if(save)setTimeout(hardReloadItems,900);
   },true);
 
   const table=document.getElementById('itemTable');
-  if(table)new MutationObserver(()=>setTimeout(decorate,0)).observe(table,{childList:true,subtree:true});
+  if(table)new MutationObserver(()=>requestAnimationFrame(decorate)).observe(table,{childList:true,subtree:true});
   document.getElementById('itemStateFilter')?.addEventListener('change',decorate);
   setTimeout(decorate,900);
 
   const style=document.createElement('style');
-  style.textContent=`.item-review-reason{margin-top:4px;color:#ffcf4a;font-size:8px;line-height:1.45;white-space:normal;max-width:260px}`;
+  style.textContent=`
+    .item-review-reason{margin-top:4px;color:#ffcf4a;font-size:8px;line-height:1.45;white-space:normal;max-width:280px}
+    #itemTable tr[style*="display: none"]{display:none!important}
+  `;
   document.head.appendChild(style);
 })();
