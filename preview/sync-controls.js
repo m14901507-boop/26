@@ -30,7 +30,7 @@
     itemsBtn.textContent='جاري تحديث البنود…';
     try{
       setStatus('جاري تحديث دليل البنود من Google Sheets...');
-      const i=await req('/api/items');
+      const i=await req('/api/items?ts='+Date.now());
       DATA.items=i.rows||[];
       syncBudgetOptions();
       syncDependentFilters();
@@ -45,9 +45,10 @@
     const old=opsBtn.textContent;
     opsBtn.textContent='جاري مزامنة العمليات…';
     try{
-      setStatus('جاري فحص الرسائل البنكية المصنفة حديثًا...');
+      setStatus('جاري مطابقة العمليات مع تصنيفات Gmail الحالية...');
       const r=await req('/api/sync/operations',{method:'POST'});
-      setStatus(`تم فحص الرسائل — تمت إضافة ${Number(r.added||0)} عملية جديدة`,true);
+      setStatus(`تمت المزامنة — جديد ${Number(r.added||0)}، تم تحديث ${Number(r.updated||0)}، أزيل تصنيف ${Number(r.cleared||0)}`,true);
+      await reloadItems();
       await refresh();
     }catch(e){setStatus(e.message||String(e));}
     finally{opsBtn.disabled=false;opsBtn.textContent=old;}
