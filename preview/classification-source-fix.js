@@ -8,46 +8,24 @@
     };
 
     guide=function(){
-      return new Map((DATA.items||[]).map(r=>[
-        norm(r?.[0]),
-        budgetForItem(r)
-      ]));
+      return new Map((DATA.items||[]).map(r=>[norm(r?.[0]),budgetForItem(r)]));
     };
 
-    function fixItemBudgetEditors(){
+    // مهم: لا نعيد ضبط قيمة قائمة الموازنة أثناء تحرير المستخدم.
+    // renderItems يرسم القيمة الحالية من DATA، لذلك لا حاجة إلى MutationObserver يعيدها للخلف.
+    const cleanEditors=()=>{
       document.querySelectorAll('#itemTable select[data-f="budget"]').forEach(sel=>{
         [...sel.options].forEach(o=>{if(o.value==='غير مصنف')o.remove();});
         if(![...sel.options].some(o=>o.value==='')){
-          const o=document.createElement('option');
-          o.value='';
-          o.textContent='— يحتاج تصنيف —';
-          sel.insertBefore(o,sel.firstChild);
+          const o=document.createElement('option');o.value='';o.textContent='— يحتاج تصنيف —';sel.insertBefore(o,sel.firstChild);
         }
-        const tr=sel.closest('tr[data-index]');
-        const idx=Number(tr?.dataset.index);
-        const classification=String(DATA.items?.[idx]?.[1]??'').trim();
-        sel.value=defs.includes(classification)?classification:'';
       });
-    }
-
-    const reapply=()=>{
-      try{
-        syncBudgetOptions();
-        syncDependentFilters();
-        renderAll();
-        setTimeout(fixItemBudgetEditors,0);
-      }catch{}
     };
 
-    const table=document.getElementById('itemTable');
-    if(table)new MutationObserver(()=>setTimeout(fixItemBudgetEditors,0)).observe(table,{childList:true,subtree:true});
-    document.getElementById('syncItemsNow')?.addEventListener('click',()=>setTimeout(reapply,900));
-    document.getElementById('syncOperationsNow')?.addEventListener('click',()=>setTimeout(reapply,1200));
-    document.getElementById('refresh')?.addEventListener('click',()=>setTimeout(reapply,1200));
-    document.addEventListener('click',e=>{
-      if(e.target.closest?.('.save-item'))setTimeout(reapply,1300);
-    },true);
-
-    setTimeout(reapply,1200);
+    const reapply=()=>{try{syncBudgetOptions();syncDependentFilters();renderAll();requestAnimationFrame(cleanEditors);}catch{}};
+    document.getElementById('syncItemsNow')?.addEventListener('click',()=>setTimeout(reapply,500));
+    document.getElementById('syncOperationsNow')?.addEventListener('click',()=>setTimeout(reapply,700));
+    document.getElementById('refresh')?.addEventListener('click',()=>setTimeout(reapply,700));
+    setTimeout(reapply,900);
   }catch(e){console.error('classification-source-fix',e);}
 })();
