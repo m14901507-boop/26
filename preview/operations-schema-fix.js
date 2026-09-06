@@ -1,5 +1,20 @@
 /* Resolve operations by named headers so column moves do not change meaning. */
 (()=>{
+  function budgetName(value){
+    const name=String(value??'').trim().replace(/\s+/g,' ');
+    const aliases={'العائلي الشهري':'عائلي شهري','العائلي السنوي':'عائلي سنوي','الشخصي الشهري':'شخصي شهري','الشخصي السنوي':'شخصي سنوي'};
+    return aliases[name]||name;
+  }
+  budgetForItem=function(r){const name=budgetName(r?.[1]);return defs.includes(name)?name:'';};
+  budgetAmount=function(name,month){
+    const row=DATA.budgets.find(r=>{const d=parseDate(r[0]);return (d?mk(d)===month:String(r[0]).includes(month))&&budgetName(r[2])===budgetName(name);});
+    return row?Number(row[4])||0:0;
+  };
+  const originalAccountNo=normalizeAccountNo;
+  normalizeAccountNo=function(bank,no){
+    if(bank==='ميثاق'&&['22','022','0022'].includes(String(no??'').replace(/\D/g,'')))return '0022';
+    return originalAccountNo(bank,no);
+  };
   function columnMap(){
     const headers=(DATA.opHeaders||[]).map(h=>String(h??'').trim().replace(/[\u200e\u200f\u061c\ufeff]/g,''));
     const names={id:'معرف الرسالة',date:'التاريخ والوقت',item:'البند',classification:'التصنيف',amount:'المبلغ',desc:'الطرف',movement:'نوع العملية',bank:'البنك',accountKey:'معرف الحساب',sourceBudget:'مصدر الموازنة'};
@@ -45,7 +60,7 @@
       const accountKeyRaw=String(r[ix.accountKey]??'').trim();
       const sourceBudget=String(r[ix.sourceBudget]??'').trim();
       const ai=accountFromKey(accountKeyRaw,bankRaw);
-      const budget=sourceBudget||classification||'غير مصنف';
+      const budget=budgetName(sourceBudget||classification)||'غير مصنف';
       return{
         r,d,item,
         account:bankRaw,

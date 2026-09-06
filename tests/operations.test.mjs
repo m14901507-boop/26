@@ -68,6 +68,16 @@ test('account, budget, movement and week filters select the same rows as totals'
   assert.equal(ctx.run('summary().ops.length'),1);assert.equal(ctx.run('summary().spent'),10);
 });
 
+test('legacy budget labels match filters and budget totals without changing source rows',()=>{
+  const ctx=context(),r=row('sample','01/09/2026',7,'مصروف');r[3]='العائلي الشهري';r[16]='العائلي الشهري';setData(ctx,[r]);
+  ctx.run("DATA.budgets=[['2026-09-01','','العائلي الشهري','',50]];DATA.items=[['بند تجريبي','العائلي الشهري']]");
+  ctx.element('budgetFilter').value='عائلي شهري';
+  assert.equal(ctx.run('summary().ops.length'),1);assert.equal(ctx.run('summary().spent'),7);assert.equal(ctx.run('summary().budgetTotal'),50);
+  assert.equal(ctx.run('budgetForItem(DATA.items[0])'),'عائلي شهري');assert.equal(ctx.run('DATA.operations[0][16]'),'العائلي الشهري');
+  assert.equal(ctx.run("normalizeAccountNo('ميثاق','22')"),'0022');
+  assert.equal(ctx.run("normalizeAccountNo('ميثاق','0022')"),'0022');
+});
+
 test('authenticated operations endpoint returns all nonblank rows without writes or Gmail',async()=>{
   const requests=[];
   const rows=[row('a','01/09/2026',10,'مصروف'),row('b','02/09/2026',100,'دخل'),row('c','03/09/2026',30,'تحويل داخلي'),[]];
