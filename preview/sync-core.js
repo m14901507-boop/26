@@ -8,30 +8,40 @@
   refreshBtn.parentNode?.insertBefore(wrap,refreshBtn);wrap.append(ops,items,all,refreshBtn);
 
   let busy=false;
-  async function run(path,button,silent=false){
+  async function run(kind,button,silent=false){
     if(busy)return;
     busy=true;
     const old=button?.textContent||'';
     if(button){button.disabled=true;if(!silent)button.textContent='جاري المزامنة…';}
     try{
+      let path='/api/sync/'+kind;
+      if(kind==='operations'){
+        const since=localStorage.getItem('floosy_gmail_history_id')||'';
+        if(since)path+='?since='+encodeURIComponent(since);
+      }
       const r=await req(path,{method:'POST'});
       if(r.historyId)localStorage.setItem('floosy_gmail_history_id',String(r.historyId));
-      await refresh();
-      if(!silent)setStatus(`تمت المزامنة — مصنف ${r.classified||0}، جديد ${r.added||0}، تحديث ${r.updated||0}، حذف ${r.removed||0}${r.ambiguous?`، تعارض ${r.ambiguous}`:''}`,true);
+      const changed=Number(r.changed??0)+Number(r.added||0)+Number(r.updated||0)+Number(r.removed||0);
+      if(kind==='items'&&Number(r.updated||0)>0)await refresh();
+      else if(kind==='all'||changed>0)await refresh();
+      if(!silent){
+        const partial=r.partial?' — المزامنة الشاملة جزئية بسبب حدود الخدمة':'';
+        setStatus(`تمت المزامنة — جديد ${r.added||0}، تحديث ${r.updated||0}، حذف ${r.removed||0}${r.ambiguous?`، تعارض ${r.ambiguous}`:''}${partial}`,true);
+      }
       return r;
     }catch(e){if(!silent)setStatus(e.message||String(e));}
     finally{busy=false;if(button){button.disabled=false;button.textContent=old;}}
   }
 
-  ops.addEventListener('click',()=>run('/api/sync/operations',ops,false));
-  items.addEventListener('click',()=>run('/api/sync/items',items,false));
-  all.addEventListener('click',()=>run('/api/sync/all',all,false));
+  ops.addEventListener('click',()=>run('operations',ops,false));
+  items.addEventListener('click',()=>run('items',items,false));
+  all.addEventListener('click',()=>run('all',all,false));
 
-  // مزامنة تلقائية خفيفة: تبدأ بعد فتح الموقع ولا تؤخر تسجيل الدخول.
   async function autoSync(){
     if(document.visibilityState!=='visible'||!sessionStorage.getItem('floosy_preview_session')||busy)return;
-    await run('/api/sync/operations',null,true);
+    await run('operations',null,true);
   }
-  setTimeout(autoSync,30000);
+  // لا تبدأ أي مزامنة أثناء تسجيل الدخول أو مباشرة بعده.
+  setTimeout(autoSync,120000);
   setInterval(autoSync,300000);
 })();
