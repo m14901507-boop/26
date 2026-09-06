@@ -2,15 +2,36 @@
   const topbar=document.querySelector('.topbar'),refreshBtn=document.getElementById('refresh');
   if(!topbar||!refreshBtn)return;
   const wrap=document.createElement('div');wrap.style.cssText='display:flex;gap:8px;flex-wrap:wrap;align-items:center';
-  const ops=document.createElement('button');ops.id='syncOperationsNow';ops.className='btn primary';ops.textContent='تحديث العمليات';
-  const items=document.createElement('button');items.id='syncItemsNow';items.className='btn';items.textContent='تحديث البنود';
-  refreshBtn.parentNode?.insertBefore(wrap,refreshBtn);wrap.append(ops,items,refreshBtn);
+  const ops=document.createElement('button');ops.id='syncOperationsNow';ops.className='btn primary';ops.textContent='مزامنة العمليات';
+  const items=document.createElement('button');items.id='syncItemsNow';items.className='btn';items.textContent='مزامنة البنود';
+  const all=document.createElement('button');all.id='syncAllNow';all.className='btn';all.textContent='مزامنة الكل';
+  refreshBtn.parentNode?.insertBefore(wrap,refreshBtn);wrap.append(ops,items,all,refreshBtn);
 
-  async function reloadItems(){items.disabled=true;const old=items.textContent;items.textContent='جاري تحديث البنود…';try{const i=await req('/api/items?ts='+Date.now());DATA.items=i.rows||[];syncBudgetOptions();syncDependentFilters();renderAll();setStatus(`تم تحديث دليل البنود — ${DATA.items.length} بند`,true);}catch(e){setStatus(e.message||String(e));}finally{items.disabled=false;items.textContent=old;}}
+  let busy=false;
+  async function run(path,button,silent=false){
+    if(busy)return;
+    busy=true;
+    const old=button?.textContent||'';
+    if(button){button.disabled=true;if(!silent)button.textContent='جاري المزامنة…';}
+    try{
+      const r=await req(path,{method:'POST'});
+      if(r.historyId)localStorage.setItem('floosy_gmail_history_id',String(r.historyId));
+      await refresh();
+      if(!silent)setStatus(`تمت المزامنة — مصنف ${r.classified||0}، جديد ${r.added||0}، تحديث ${r.updated||0}، حذف ${r.removed||0}${r.ambiguous?`، تعارض ${r.ambiguous}`:''}`,true);
+      return r;
+    }catch(e){if(!silent)setStatus(e.message||String(e));}
+    finally{busy=false;if(button){button.disabled=false;button.textContent=old;}}
+  }
 
-  async function syncOps(full=true){if(ops.disabled)return;ops.disabled=true;const old=ops.textContent;ops.textContent='جاري مزامنة Gmail…';try{const since=localStorage.getItem('floosy_gmail_history_id')||'';const q=new URLSearchParams();if(since&&!full)q.set('since',since);if(full)q.set('full','1');const r=await req('/api/sync/operations?'+q.toString(),{method:'POST'});if(r.historyId)localStorage.setItem('floosy_gmail_history_id',String(r.historyId));await refresh();setStatus(`تمت المزامنة — جديد ${r.added||0}، تحديث ${r.updated||0}، استعادة ${r.restored||0}، أزيل تصنيف ${r.cleared||r.removedDetected||0}`,true);return r;}catch(e){setStatus(e.message||String(e));}finally{ops.disabled=false;ops.textContent=old;}}
+  ops.addEventListener('click',()=>run('/api/sync/operations',ops,false));
+  items.addEventListener('click',()=>run('/api/sync/items',items,false));
+  all.addEventListener('click',()=>run('/api/sync/all',all,false));
 
-  ops.addEventListener('click',()=>syncOps(true));
-  items.addEventListener('click',reloadItems);
-  // لا توجد مزامنة Gmail تلقائية أثناء فتح الموقع حتى يبقى تسجيل الدخول والتنقل سريعًا.
+  // مزامنة تلقائية خفيفة: تبدأ بعد فتح الموقع ولا تؤخر تسجيل الدخول.
+  async function autoSync(){
+    if(document.visibilityState!=='visible'||!sessionStorage.getItem('floosy_preview_session')||busy)return;
+    await run('/api/sync/operations',null,true);
+  }
+  setTimeout(autoSync,30000);
+  setInterval(autoSync,300000);
 })();
