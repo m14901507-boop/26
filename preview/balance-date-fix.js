@@ -33,7 +33,8 @@
       bars('accountBars',[...bm.values()].map(x=>({k:x.label,v:x.balance})));
       $('accountChart').innerHTML=svgTrend(temporalRepeatData());
       insights('accountInsights',[[selected.value==null?'warn':'good','آخر رصيد مؤكد',selected.value==null?'لا يوجد رصيد مؤكد مسجل لهذا الحساب':money(selected.value)],['good','الحساب',selected.label],['warn','المصدر','أحدث رصيد فعلي حسب تاريخ الرصيد في Google Sheets']]);
-      $('accountTable').innerHTML=rows.map(ai=>{const os=s.ops.filter(x=>x.accountKey===ai.key),out=os.filter(x=>!/دخل|وارد/i.test(x.movement)).reduce((a,c)=>a+c.amount,0),inc=os.filter(x=>/دخل|وارد/i.test(x.movement)).reduce((a,c)=>a+c.amount,0),lb=bm.get(ai.key);return`<tr><td>${esc(ai.bank)}</td><td class="account-no">${esc(ai.number)}</td><td>${lb?money(lb.balance):'غير مؤكد'}</td><td>${lb?.date?esc(formatBalanceDate(lb.date)):'—'}</td><td>${os.length}</td><td>${money(out)}</td><td>${money(inc)}</td></tr>`}).join('');
+      $('accountTable').innerHTML=rows.map(ai=>{const os=s.ops.filter(x=>x.accountKey===ai.key),out=spendOps().filter(x=>x.accountKey===ai.key).reduce((a,c)=>a+c.amount,0),inc=os.filter(x=>!/تحويل\s*داخلي|تحويلات\s*داخلية|internal\s*transfer/i.test(x.movement)&&/دخل|وارد|credit|income/i.test(x.movement)).reduce((a,c)=>a+c.amount,0),lb=bm.get(ai.key);return`<tr><td>${esc(ai.bank)}</td><td class="account-no">${esc(ai.number)}</td><td>${lb?money(lb.balance):'غير مؤكد'}</td><td>${lb?.date?esc(formatBalanceDate(lb.date)):'—'}</td><td>${os.length}</td><td>${money(out)}</td><td>${money(inc)}</td></tr>`}).join('');
     };
   }catch(e){}
 })();
+

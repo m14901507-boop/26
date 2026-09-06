@@ -1,5 +1,22 @@
-/* Use the canonical عمليات A:T schema directly. No header guessing. */
+/* Resolve operations by named headers so column moves do not change meaning. */
 (()=>{
+  function columnMap(){
+    const headers=(DATA.opHeaders||[]).map(h=>String(h??'').trim().replace(/[\u200e\u200f\u061c\ufeff]/g,''));
+    const names={id:'معرف الرسالة',date:'التاريخ والوقت',item:'البند',classification:'التصنيف',amount:'المبلغ',desc:'الطرف',movement:'نوع العملية',bank:'البنك',accountKey:'معرف الحساب',sourceBudget:'مصدر الموازنة'};
+    const map={};
+    for(const [key,name] of Object.entries(names)){
+      map[key]=headers.indexOf(name);
+      if(map[key]>=0&&headers.lastIndexOf(name)!==map[key])throw new Error('عنوان مكرر في ورقة العمليات: '+name);
+    }
+    for(const key of ['date','item','amount','movement'])if(map[key]<0)throw new Error('عنوان مفقود في ورقة العمليات: '+names[key]);
+    return map;
+  }
+  function amountValue(v){
+    if(typeof v==='number')return Number.isFinite(v)?Math.abs(v):NaN;
+    const s=String(v??'').trim().replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/٬/g,',').replace(/٫/g,'.');
+    if(!/^[+-]?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(s))return NaN;
+    return Math.abs(Number(s.replace(/,/g,'')));
+  }
   function accountFromKey(key,bankRaw){
     const k=String(key||'').trim();
     if(k==='AHLI_001')return{key:'بنك الأهلي|001',bank:'بنك الأهلي',number:'001',label:'بنك الأهلي — حساب 001'};
@@ -14,16 +31,19 @@
   }
 
   allOps=function(){
-    return (Array.isArray(DATA.operations)?DATA.operations:[]).map(r=>{
-      const d=parseDate(r?.[1]);                  // B التاريخ والوقت
-      const item=String(r?.[2]??'').trim();       // C البند
-      const classification=String(r?.[3]??'').trim(); // D التصنيف
-      const amount=Math.abs(Number(r?.[4])||0);   // E المبلغ
-      const desc=String(r?.[5]??'').trim();       // F الطرف
-      const movement=String(r?.[6]??'').trim();   // G نوع العملية
-      const bankRaw=String(r?.[8]??'').trim();    // I البنك
-      const accountKeyRaw=String(r?.[15]??'').trim(); // P معرف الحساب
-      const sourceBudget=String(r?.[16]??'').trim();  // Q مصدر الموازنة
+    const rows=Array.isArray(DATA.operations)?DATA.operations:[];
+    if(!rows.length)return [];
+    const ix=columnMap();
+    return rows.filter(r=>Array.isArray(r)&&r.some(v=>String(v??'').trim()!=='')).map(r=>{
+      const d=parseDate(r[ix.date]);
+      const item=String(r[ix.item]??'').trim();
+      const classification=String(r[ix.classification]??'').trim();
+      const amount=amountValue(r[ix.amount]);
+      const desc=String(r[ix.desc]??'').trim();
+      const movement=String(r[ix.movement]??'').trim();
+      const bankRaw=String(r[ix.bank]??'').trim();
+      const accountKeyRaw=String(r[ix.accountKey]??'').trim();
+      const sourceBudget=String(r[ix.sourceBudget]??'').trim();
       const ai=accountFromKey(accountKeyRaw,bankRaw);
       const budget=sourceBudget||classification||'غير مصنف';
       return{
@@ -36,10 +56,17 @@
         movement,amount,desc,budget,
         sourceBudget,
         classification,
-        messageId:String(r?.[0]??'').trim()
+        messageId:String(r[ix.id]??'').trim()
       };
     });
   };
+
+  // Internal transfers remain visible but are not household income or spending.
+  const isInternal=x=>/تحويل\s*داخلي|تحويلات\s*داخلية|internal\s*transfer/i.test(x.movement);
+  const isIncome=x=>!isInternal(x)&&/دخل|وارد|credit|income/i.test(x.movement);
+  spendOps=function(){return filteredOps().filter(x=>!isInternal(x)&&!isIncome(x)&&/مصروف|صرف|شراء|سحب|صادر|debit|expense|purchase|withdraw/i.test(x.movement));};
+  const originalSummary=summary;
+  summary=function(){const result=originalSummary();result.income=result.ops.filter(isIncome).reduce((sum,x)=>sum+x.amount,0);return result;};
 
   // فلتر الشهر يعتمد فقط على تاريخ العملية B.
   filteredOps=function(){

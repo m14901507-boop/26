@@ -8,30 +8,16 @@
 
   function validLocal(y,m,d,h=0,mi=0,s=0){
     const x=new Date(y,m-1,d,h,mi,s);
-    return x.getFullYear()===y&&x.getMonth()===m-1&&x.getDate()===d;
+    return x.getFullYear()===y&&x.getMonth()===m-1&&x.getDate()===d&&x.getHours()===h&&x.getMinutes()===mi&&x.getSeconds()===s;
   }
 
   function localDate(y,m,d,h=0,mi=0,s=0){
     return validLocal(y,m,d,h,mi,s)?new Date(y,m-1,d,h,mi,s):null;
   }
 
-  function targetMonths(){
-    try{return new Set(typeof periodMonths==='function'?periodMonths():[]);}catch{return new Set();}
-  }
-
   function chooseAmbiguous(a,b,y,h=0,mi=0,s=0){
     const dm=localDate(y,b,a,h,mi,s); // dd/MM
-    const md=localDate(y,a,b,h,mi,s); // MM/dd
-    if(dm&&!md)return dm;
-    if(md&&!dm)return md;
-    if(!dm&&!md)return null;
-    const targets=targetMonths();
-    if(targets.size){
-      const dmKey=mk(dm),mdKey=mk(md),dmHit=targets.has(dmKey),mdHit=targets.has(mdKey);
-      if(dmHit&&!mdHit)return dm;
-      if(mdHit&&!dmHit)return md;
-    }
-    // النظام العربي يستخدم يوم/شهر افتراضيًا عند بقاء الصيغة غامضة.
+    // Dates have one meaning regardless of the selected filters.
     return dm;
   }
 
@@ -48,31 +34,35 @@
     const s=latinDigits(v).trim();
     if(!s)return null;
 
-    // ISO / yyyy-MM-dd
-    let m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    // Absolute timestamps are displayed and filtered in Oman time.
+    if(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(s)){
+      const instant=new Date(s);
+      if(!Number.isFinite(instant.getTime()))return null;
+      const oman=new Date(instant.getTime()+4*3600000);
+      return localDate(oman.getUTCFullYear(),oman.getUTCMonth()+1,oman.getUTCDate(),oman.getUTCHours(),oman.getUTCMinutes(),oman.getUTCSeconds());
+    }
+    // ISO / yyyy-MM-dd without a zone is already sheet-local time.
+    let m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)?$/);
     if(m){
-      const d=localDate(+m[1],+m[2],+m[3],+(m[4]||0),+(m[5]||0),+(m[6]||0));
-      if(d)return d;
+      return localDate(+m[1],+m[2],+m[3],+(m[4]||0),+(m[5]||0),+(m[6]||0));
     }
 
     // الوقت قبل التاريخ: 14:30 01/09/2026
-    m=s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s+(\d{1,2})[\/-](\d{1,2})[\/-](\d{2}|\d{4})/);
+    m=s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s+(\d{1,2})[\/-](\d{1,2})[\/-](\d{4}|\d{2})$/);
     if(m){
       let y=+m[6];if(y<100)y+=2000;
-      const d=chooseAmbiguous(+m[4],+m[5],y,+m[1],+m[2],+(m[3]||0));
-      if(d)return d;
+      return chooseAmbiguous(+m[4],+m[5],y,+m[1],+m[2],+(m[3]||0));
     }
 
-    // dd/MM أو MM/dd. إذا كان الشكل غامضًا نستخدم الشهر المحدد في فلتر FLOOSY للفصل بينهما.
-    m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2}|\d{4})(?:[ T,]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    // The sheet's canonical text format is dd/MM/yyyy.
+    m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4}|\d{2})(?:[ T,]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
     if(m){
       let y=+m[3];if(y<100)y+=2000;
-      const d=chooseAmbiguous(+m[1],+m[2],y,+(m[4]||0),+(m[5]||0),+(m[6]||0));
-      if(d)return d;
+      return chooseAmbiguous(+m[1],+m[2],y,+(m[4]||0),+(m[5]||0),+(m[6]||0));
     }
 
-    const d=new Date(s);
-    return isNaN(d)?null:d;
+    // Do not let Date guess malformed numeric dates or normalize invalid days.
+    return null;
   };
 
   function renderOperationRows(rows){

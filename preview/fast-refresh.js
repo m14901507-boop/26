@@ -10,6 +10,7 @@
         get('/api/gmail/latest-balances?ts='+Date.now())
       ]);
       if(o.__error)throw o.__error;
+      if(o.ok===false||!Array.isArray(o.rows)||!Array.isArray(o.headers))throw new Error(o.error||'استجابة العمليات غير صالحة؛ تعذر قراءة بيانات الشيت');
       DATA={
         budgets:b.__error?DATA.budgets:(b.rows||[]),
         items:i.__error?DATA.items:(i.rows||[]),
@@ -25,6 +26,9 @@
       renderAll();
       $('liveNote').textContent='العرض من Google Sheets — Gmail يتزامن عند الضغط على تحديث العمليات';
       const warnings=[b.__error?'الموازنات':'',i.__error?'البنود':'',lb.__error?'الأرصدة':''].filter(Boolean);
+      const records=allOps(),invalidDates=records.filter(x=>!x.d).length,invalidAmounts=records.filter(x=>!Number.isFinite(x.amount)).length;
+      if(invalidDates)warnings.push(`${invalidDates} عملية بتاريخ غير صالح`);
+      if(invalidAmounts)warnings.push(`${invalidAmounts} عملية بمبلغ غير صالح`);
       setStatus(warnings.length?`تم تحميل العمليات — تعذر مؤقتًا: ${warnings.join('، ')}`:`متصل — ${DATA.operations.length} عملية، ${balanceMap().size} رصيد مؤكد`,warnings.length===0);
     }catch(e){
       setStatus(e.message||String(e));
