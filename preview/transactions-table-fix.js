@@ -1,5 +1,10 @@
-/* Robust date reader for operations. Does not modify Google Sheets. */
+/* Robust operations reader for fixed A:T sheet schema. Does not modify Google Sheets. */
 (function(){
+  // Sheet schema is fixed:
+  // A message id, B datetime, C item, D classification, E amount, F party,
+  // G movement, H channel, I bank, J system, ... P account key, Q budget source.
+  opMap=function(){return{date:1,item:2,amount:4,desc:5,movement:6,account:8};};
+
   function latinDigits(value){
     return String(value ?? '')
       .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
@@ -10,58 +15,36 @@
     const x=new Date(y,m-1,d,h,mi,s);
     return x.getFullYear()===y&&x.getMonth()===m-1&&x.getDate()===d&&x.getHours()===h&&x.getMinutes()===mi&&x.getSeconds()===s;
   }
+  function localDate(y,m,d,h=0,mi=0,s=0){return validLocal(y,m,d,h,mi,s)?new Date(y,m-1,d,h,mi,s):null;}
 
-  function localDate(y,m,d,h=0,mi=0,s=0){
-    return validLocal(y,m,d,h,mi,s)?new Date(y,m-1,d,h,mi,s):null;
-  }
-
-  function chooseAmbiguous(a,b,y,h=0,mi=0,s=0){
-    const dm=localDate(y,b,a,h,mi,s); // dd/MM
-    // Dates have one meaning regardless of the selected filters.
-    return dm;
-  }
-
-  parseDate = function(v){
+  parseDate=function(v){
     if(v instanceof Date)return isNaN(v)?null:v;
-
     if(typeof v==='number'&&Number.isFinite(v)&&v>20000){
-      // اقرأ Google Sheets serial بدون انزياح المنطقة الزمنية.
       const ms=Math.round(Number(v)*86400000);
       const u=new Date(Date.UTC(1899,11,30)+ms);
       return new Date(u.getUTCFullYear(),u.getUTCMonth(),u.getUTCDate(),u.getUTCHours(),u.getUTCMinutes(),u.getUTCSeconds());
     }
-
     const s=latinDigits(v).trim();
     if(!s)return null;
 
-    // Absolute timestamps are displayed and filtered in Oman time.
-    if(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(s)){
-      const instant=new Date(s);
-      if(!Number.isFinite(instant.getTime()))return null;
+    // ISO absolute timestamps -> Oman local time.
+    if(/^\d{4}-\d{1,2}-\d{1,2}T.*(?:Z|[+-]\d{2}:?\d{2})$/i.test(s)){
+      const instant=new Date(s);if(!Number.isFinite(instant.getTime()))return null;
       const oman=new Date(instant.getTime()+4*3600000);
       return localDate(oman.getUTCFullYear(),oman.getUTCMonth()+1,oman.getUTCDate(),oman.getUTCHours(),oman.getUTCMinutes(),oman.getUTCSeconds());
     }
-    // ISO / yyyy-MM-dd without a zone is already sheet-local time.
+
+    // yyyy-MM-dd [HH:mm:ss]
     let m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)?$/);
-    if(m){
-      return localDate(+m[1],+m[2],+m[3],+(m[4]||0),+(m[5]||0),+(m[6]||0));
-    }
+    if(m)return localDate(+m[1],+m[2],+m[3],+(m[4]||0),+(m[5]||0),+(m[6]||0));
 
-    // الوقت قبل التاريخ: 14:30 01/09/2026
-    m=s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s+(\d{1,2})[\/-](\d{1,2})[\/-](\d{4}|\d{2})$/);
-    if(m){
-      let y=+m[6];if(y<100)y+=2000;
-      return chooseAmbiguous(+m[4],+m[5],y,+m[1],+m[2],+(m[3]||0));
-    }
-
-    // The sheet's canonical text format is dd/MM/yyyy.
+    // dd/MM/yyyy [HH:mm:ss] — this is the sheet's operation format.
     m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4}|\d{2})(?:[ T,]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
-    if(m){
-      let y=+m[3];if(y<100)y+=2000;
-      return chooseAmbiguous(+m[1],+m[2],y,+(m[4]||0),+(m[5]||0),+(m[6]||0));
-    }
+    if(m){let y=+m[3];if(y<100)y+=2000;return localDate(y,+m[2],+m[1],+(m[4]||0),+(m[5]||0),+(m[6]||0));}
 
-    // Do not let Date guess malformed numeric dates or normalize invalid days.
+    // HH:mm[:ss] dd/MM/yyyy
+    m=s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s+(\d{1,2})[\/-](\d{1,2})[\/-](\d{4}|\d{2})$/);
+    if(m){let y=+m[6];if(y<100)y+=2000;return localDate(y,+m[5],+m[4],+m[1],+m[2],+(m[3]||0));}
     return null;
   };
 
@@ -73,7 +56,6 @@
 
   const originalRenderDashboard=renderDashboard;
   renderDashboard=function(){originalRenderDashboard();const s=summary(),body=$('dashTable');if(body)body.innerHTML=renderOperationRows(s.ops);};
-
   const originalRenderTransactions=renderTransactions;
   renderTransactions=function(){originalRenderTransactions();const s=summary(),body=$('txTable');if(body)body.innerHTML=renderOperationRows(s.ops);};
 })();
