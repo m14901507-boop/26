@@ -1,4 +1,4 @@
-/* Resolve operations by named headers so column moves do not change meaning. */
+/* Operations schema A:T + direct month filtering from operation date column B. */
 (()=>{
   function budgetName(value){
     const name=String(value??'').trim().replace(/\s+/g,' ');
@@ -19,16 +19,24 @@
     const headers=(DATA.opHeaders||[]).map(h=>String(h??'').trim().replace(/[\u200e\u200f\u061c\ufeff]/g,''));
     const names={id:'معرف الرسالة',date:'التاريخ والوقت',item:'البند',classification:'التصنيف',amount:'المبلغ',desc:'الطرف',movement:'نوع العملية',bank:'البنك',accountKey:'معرف الحساب',sourceBudget:'مصدر الموازنة'};
     const map={};
-    for(const [key,name] of Object.entries(names)){
-      map[key]=headers.indexOf(name);
-      if(map[key]>=0&&headers.lastIndexOf(name)!==map[key])throw new Error('عنوان مكرر في ورقة العمليات: '+name);
-    }
-    for(const key of ['date','item','amount','movement'])if(map[key]<0)throw new Error('عنوان مفقود في ورقة العمليات: '+names[key]);
+    for(const [key,name] of Object.entries(names))map[key]=headers.indexOf(name);
+    // Fixed A:T fallback for the current operations sheet.
+    const fallback={id:0,date:1,item:2,classification:3,amount:4,desc:5,movement:6,bank:8,accountKey:15,sourceBudget:16};
+    for(const key of Object.keys(fallback))if(map[key]<0)map[key]=fallback[key];
     return map;
+  }
+  function latin(v){return String(v??'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).trim();}
+  function operationMonth(raw){
+    if(typeof raw==='number'&&Number.isFinite(raw)&&raw>20000){const d=parseDate(raw);return d?mk(d):'';}
+    const s=latin(raw);let m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4}|\d{2})/);
+    if(m){let y=+m[3];if(y<100)y+=2000;const mo=+m[2];return mo>=1&&mo<=12?`${y}-${String(mo).padStart(2,'0')}`:'';}
+    m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+    if(m){const mo=+m[2];return mo>=1&&mo<=12?`${m[1]}-${String(mo).padStart(2,'0')}`:'';}
+    const d=parseDate(raw);return d?mk(d):'';
   }
   function amountValue(v){
     if(typeof v==='number')return Number.isFinite(v)?Math.abs(v):NaN;
-    const s=String(v??'').trim().replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/٬/g,',').replace(/٫/g,'.');
+    const s=latin(v).replace(/٬/g,',').replace(/٫/g,'.');
     if(!/^[+-]?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(s))return NaN;
     return Math.abs(Number(s.replace(/,/g,'')));
   }
@@ -41,58 +49,38 @@
     if(k==='SOHAR_7010')return{key:'بنك صحار|7010',bank:'بنك صحار',number:'7010',label:'بنك صحار — حساب 7010'};
     if(k==='SOHAR_7240')return{key:'بنك صحار|7240',bank:'بنك صحار',number:'7240',label:'بنك صحار — حساب 7240'};
     if(k.startsWith('DHOFAR_')){const n=k.slice(7)||'—';return{key:'بنك ظفار|'+n,bank:'بنك ظفار',number:n,label:'بنك ظفار — حساب '+n};}
-    const ai=accountInfo(String(bankRaw||''));
-    return{key:ai.key,bank:ai.bank,number:ai.number,label:ai.label};
+    const ai=accountInfo(String(bankRaw||''));return{key:ai.key,bank:ai.bank,number:ai.number,label:ai.label};
   }
 
   allOps=function(){
-    const rows=Array.isArray(DATA.operations)?DATA.operations:[];
-    if(!rows.length)return [];
+    const rows=Array.isArray(DATA.operations)?DATA.operations:[];if(!rows.length)return [];
     const ix=columnMap();
     return rows.filter(r=>Array.isArray(r)&&r.some(v=>String(v??'').trim()!=='')).map(r=>{
-      const d=parseDate(r[ix.date]);
-      const item=String(r[ix.item]??'').trim();
-      const classification=String(r[ix.classification]??'').trim();
-      const amount=amountValue(r[ix.amount]);
-      const desc=String(r[ix.desc]??'').trim();
-      const movement=String(r[ix.movement]??'').trim();
-      const bankRaw=String(r[ix.bank]??'').trim();
-      const accountKeyRaw=String(r[ix.accountKey]??'').trim();
-      const sourceBudget=String(r[ix.sourceBudget]??'').trim();
-      const ai=accountFromKey(accountKeyRaw,bankRaw);
-      const budget=budgetName(sourceBudget||classification)||'غير مصنف';
-      return{
-        r,d,item,
-        account:bankRaw,
-        accountKey:ai.key,
-        bankName:ai.bank,
-        accountNo:ai.number,
-        accountLabel:ai.label,
-        movement,amount,desc,budget,
-        sourceBudget,
-        classification,
-        messageId:String(r[ix.id]??'').trim()
-      };
+      const rawDate=r[ix.date],d=parseDate(rawDate),monthKey=operationMonth(rawDate);
+      const item=String(r[ix.item]??'').trim(),classification=String(r[ix.classification]??'').trim(),amount=amountValue(r[ix.amount]),desc=String(r[ix.desc]??'').trim(),movement=String(r[ix.movement]??'').trim(),bankRaw=String(r[ix.bank]??'').trim(),accountKeyRaw=String(r[ix.accountKey]??'').trim(),sourceBudget=String(r[ix.sourceBudget]??'').trim();
+      const ai=accountFromKey(accountKeyRaw,bankRaw),budget=budgetName(sourceBudget||classification)||'غير مصنف';
+      return{r,d,monthKey,item,account:bankRaw,accountKey:ai.key,bankName:ai.bank,accountNo:ai.number,accountLabel:ai.label,movement,amount,desc,budget,sourceBudget,classification,messageId:String(r[ix.id]??'').trim()};
     });
   };
 
-  // Internal transfers remain visible but are not household income or spending.
-  const isInternal=x=>/تحويل\s*داخلي|تحويلات\s*داخلية|internal\s*transfer/i.test(x.movement);
+  const isInternal=x=>/تحويل\s*داخلي|تحويلات\s*داخلية|internal\s*transfer/i.test([x.movement,x.classification,x.sourceBudget].join(' '));
   const isIncome=x=>!isInternal(x)&&/دخل|وارد|credit|income/i.test(x.movement);
   spendOps=function(){return filteredOps().filter(x=>!isInternal(x)&&!isIncome(x)&&/مصروف|صرف|شراء|سحب|صادر|debit|expense|purchase|withdraw/i.test(x.movement));};
   const originalSummary=summary;
-  summary=function(){const result=originalSummary();result.income=result.ops.filter(isIncome).reduce((sum,x)=>sum+x.amount,0);return result;};
+  summary=function(){const result=originalSummary();result.income=result.ops.filter(isIncome).reduce((sum,x)=>sum+(Number.isFinite(x.amount)?x.amount:0),0);return result;};
 
-  // فلتر الشهر يعتمد فقط على تاريخ العملية B.
   filteredOps=function(){
     const f=filterState(),keys=periodMonths();
     return allOps()
-      .filter(x=>x.d&&keys.includes(mk(x.d)))
-      .filter(x=>!(f.offset===0&&f.week)||weekOfMonth(x.d)===Number(f.week))
+      .filter(x=>x.monthKey&&keys.includes(x.monthKey))
+      .filter(x=>!(f.offset===0&&f.week)||(x.d&&weekOfMonth(x.d)===Number(f.week)))
       .filter(x=>!f.account||x.accountKey===f.account)
       .filter(x=>!f.budget||x.budget===f.budget)
       .filter(x=>!f.item||norm(x.item)===norm(f.item))
       .filter(x=>!f.movement||x.movement===f.movement)
       .filter(x=>!f.q||norm([x.item,x.account,x.bankName,x.accountNo,x.movement,x.desc,x.budget].join(' ')).includes(f.q));
   };
+
+  // Changing the month must not retain an old week that hides the new month's rows.
+  document.getElementById('month')?.addEventListener('change',()=>{const w=document.getElementById('weekFilter');if(w)w.value='';setTimeout(()=>{updateWeekUi();syncDependentFilters();renderAll();},0);});
 })();
