@@ -332,7 +332,7 @@ function operationsCompleteSyncBatch_() {
     }
 
     operationsCompleteWriteUpdatedRows_(operationsSheet, updatedRecords);
-    operationsWriteNewRows_(operationsSheet, newRecords);
+    operationsWriteNewRows_(operationsSheet, newRecords, true);
 
     if (newRecords.length > 0) {
       var firstNewRow = operationsSheet.getLastRow() - newRecords.length + 1;
@@ -406,7 +406,6 @@ function operationsCompleteWriteUpdatedRows_(operationsSheet, records) {
       .getRange(record.rowNumber, 2, 1, 14)
       .setValues([record.row.slice(1, 15)]);
 
-    operationsApplyFormats_(operationsSheet, record.rowNumber, 1);
   });
 }
 
