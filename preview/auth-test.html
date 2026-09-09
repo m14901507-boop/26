@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FLOOSY — اختبار تسجيل الدخول</title>
+<style>
+body{margin:0;background:#050505;color:#fff;font-family:Tahoma,"Segoe UI",Arial,sans-serif;min-height:100vh;display:grid;place-items:center}.card{width:min(560px,calc(100% - 28px));border:1px solid #333;border-radius:18px;background:#0b0b0b;padding:20px;box-sizing:border-box}h1{margin:0 0 8px;font-size:24px}p{color:#aaa;line-height:1.7}form{display:flex;gap:8px;flex-wrap:wrap}input,button{font:inherit;border-radius:10px;padding:12px;border:1px solid #3a3a3a;background:#111;color:#fff}input{flex:1;min-width:220px}button{background:#1677ff;border-color:#1677ff;cursor:pointer}.steps{margin-top:16px;display:grid;gap:8px}.step{padding:10px 12px;border:1px solid #333;border-radius:10px;background:#090909}.ok{border-color:#1f9d62;color:#80e8b5}.bad{border-color:#d84a4a;color:#ff9e9e}.wait{border-color:#c49b1c;color:#f5d76e}small{display:block;margin-top:10px;color:#888;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>اختبار تسجيل الدخول — FLOOSY Preview</h1>
+  <p>هذه صفحة اختبار منفصلة عن لوحة العرض. تختبر تسجيل الدخول ثم الجلسة ثم طلبًا محميًا بدون تحميل بقية ملفات الواجهة.</p>
+  <form id="f"><input id="p" type="password" autocomplete="current-password" placeholder="كلمة مرور FLOOSY" required><button>ابدأ الاختبار</button></form>
+  <div class="steps" id="steps"></div>
+  <small>لا يتم حفظ كلمة المرور في الصفحة أو localStorage. يتم إرسالها مباشرة إلى Cloudflare Worker عبر HTTPS.</small>
+</div>
+<script>
+const API='https://floosy-api.m14901507.workers.dev';
+const steps=document.getElementById('steps');
+function line(text,cls='wait'){const d=document.createElement('div');d.className='step '+cls;d.textContent=text;steps.appendChild(d);return d}
+async function jsonFetch(path,opt={}){const r=await fetch(API+path,opt);const d=await r.json().catch(()=>({}));return{r,d}}
+document.getElementById('f').addEventListener('submit',async e=>{
+  e.preventDefault();steps.innerHTML='';
+  const password=document.getElementById('p').value;
+  let s=line('1) فحص /auth/login ...');
+  try{
+    const login=await jsonFetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({password})});
+    document.getElementById('p').value='';
+    if(!login.r.ok){s.textContent=`1) فشل تسجيل الدخول — HTTP ${login.r.status}: ${login.d.error||'بدون رسالة'}`;s.className='step bad';return}
+    if(!login.d.session){s.textContent='1) تم قبول كلمة المرور لكن لم يرجع الخادم session';s.className='step bad';return}
+    s.textContent='1) تسجيل الدخول نجح والخادم أعاد session';s.className='step ok';
+    const token=login.d.session;
+
+    s=line('2) فحص /auth/status باستخدام Bearer session ...');
+    const status=await jsonFetch('/auth/status?ts='+Date.now(),{headers:{'Accept':'application/json','Authorization':'Bearer '+token}});
+    if(!status.r.ok||!status.d.authenticated){s.textContent=`2) الجلسة مرفوضة — HTTP ${status.r.status}, authenticated=${String(status.d.authenticated)}`;s.className='step bad';return}
+    s.textContent='2) الجلسة مقبولة من الخادم';s.className='step ok';
+
+    s=line('3) فحص /api/operations باستخدام نفس session ...');
+    const ops=await jsonFetch('/api/operations?ts='+Date.now(),{headers:{'Accept':'application/json','Authorization':'Bearer '+token}});
+    if(!ops.r.ok){s.textContent=`3) الطلب المحمي فشل — HTTP ${ops.r.status}: ${ops.d.error||'بدون رسالة'}`;s.className='step bad';return}
+    s.textContent=`3) نجاح كامل — العمليات متاحة (${Array.isArray(ops.d.rows)?ops.d.rows.length:0} صف)`;s.className='step ok';
+
+    line('النتيجة: نظام تسجيل الدخول والـWorker يعملان. إذا ظهرت Unauthorized في لوحة العرض فالمشكلة داخل ملفات واجهة preview نفسها.','ok');
+  }catch(err){line('خطأ اتصال: '+(err.message||String(err)),'bad')}
+});
+</script>
+</body>
+</html>
