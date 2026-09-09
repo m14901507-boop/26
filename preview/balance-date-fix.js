@@ -25,16 +25,27 @@
       for(const x of DATA.messages||[]){if(x.balance==null)continue;const ai=accountInfo(`${x.bankName||x.bank||x.from||''} ${x.accountNumber||''} ${x.subject||''} ${x.preview||''}`);add(x.bankName||ai.bank,x.accountNumber||ai.number,x.balance,x.date);}
       return m;
     };
+
+    selectedBalance=function(){
+      const f=filterState(),bm=balanceMap(),reg=accountRegistry();
+      if(f.account){const x=bm.get(f.account),ri=reg.get(f.account);return{value:x?.balance??null,partialValue:x?.balance??null,label:ri?.label||x?.label||f.account,count:x?1:0,total:1,complete:Boolean(x),missing:x?[]:[ri?.label||f.account],date:x?.date||''};}
+      const known=[...reg.values()].filter(x=>x&&x.key),confirmed=known.map(x=>bm.get(x.key)).filter(Boolean),missing=known.filter(x=>!bm.has(x.key));
+      const partial=confirmed.length?confirmed.reduce((s,x)=>s+Number(x.balance||0),0):null,complete=known.length>0&&missing.length===0;
+      return{value:complete?partial:null,partialValue:partial,label:complete?'كل الحسابات':`غير مكتمل — ${confirmed.length}/${known.length} حسابات`,count:confirmed.length,total:known.length,complete,missing:missing.map(x=>x.label),date:''};
+    };
   }catch(e){}
   try{
     renderAccounts=function(){
       const s=summary(),bm=balanceMap(),selected=selectedBalance(),reg=accountRegistry(),rows=[...reg.values()];
-      kpis('accountKpis',[['الرصيد المؤكد',selected.value==null?'—':money(selected.value),selected.label,'green'],['أرصدة مؤكدة',selected.count,'من Google Sheets'],['عدد العمليات',s.ops.length,s.label],['الخارج',money(s.spent),'','red'],['الداخل',money(s.income),'','green'],['الحساب المحدد',selected.label,'']]);
+      const totalText=selected.value==null?'—':money(selected.value),countText=selected.total?`${selected.count}/${selected.total}`:String(selected.count||0);
+      kpis('accountKpis',[['الرصيد المؤكد',totalText,selected.label,'green'],['أرصدة مؤكدة',countText,selected.complete?'كل الحسابات مؤكدة':'يوجد حسابات بلا رصيد حديث'],['عدد العمليات',s.ops.length,s.label],['الخارج',money(s.spent),'','red'],['الداخل',money(s.income),'','green'],['الحساب المحدد',selected.label,'']]);
       bars('accountBars',[...bm.values()].map(x=>({k:x.label,v:x.balance})));
       $('accountChart').innerHTML=svgTrend(temporalRepeatData());
-      insights('accountInsights',[[selected.value==null?'warn':'good','آخر رصيد مؤكد',selected.value==null?'لا يوجد رصيد مؤكد مسجل لهذا الحساب':money(selected.value)],['good','الحساب',selected.label],['warn','المصدر','أحدث رصيد فعلي حسب تاريخ الرصيد في Google Sheets']]);
+      const balanceInsight=selected.complete
+        ?['good','الرصيد المؤكد',money(selected.value)]
+        :['warn','الرصيد غير مكتمل',selected.partialValue==null?'لا توجد أرصدة مؤكدة بعد':`المجموع الجزئي ${money(selected.partialValue)} — المفقود: ${(selected.missing||[]).join('، ')||'حساب غير محدد'}`];
+      insights('accountInsights',[balanceInsight,['good','الحساب',selected.label],['warn','المصدر','أحدث رصيد فعلي محفوظ لكل حساب في Google Sheets']]);
       $('accountTable').innerHTML=rows.map(ai=>{const os=s.ops.filter(x=>x.accountKey===ai.key),out=spendOps().filter(x=>x.accountKey===ai.key).reduce((a,c)=>a+c.amount,0),inc=os.filter(x=>!/تحويل\s*داخلي|تحويلات\s*داخلية|internal\s*transfer/i.test(x.movement)&&/دخل|وارد|credit|income/i.test(x.movement)).reduce((a,c)=>a+c.amount,0),lb=bm.get(ai.key);return`<tr><td>${esc(ai.bank)}</td><td class="account-no">${esc(ai.number)}</td><td>${lb?money(lb.balance):'غير مؤكد'}</td><td>${lb?.date?esc(formatBalanceDate(lb.date)):'—'}</td><td>${os.length}</td><td>${money(out)}</td><td>${money(inc)}</td></tr>`}).join('');
     };
   }catch(e){}
 })();
-
