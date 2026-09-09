@@ -561,3 +561,16 @@ function installOperationsAutomaticSync() {
   };
 }
 
+
+/**
+ * واجهة الخادم التي يستدعيها زر لوحة العرض.
+ */
+function dashboardStartCompleteOperationsSync() {
+  return operationsFullSyncStart();
+}
+
+
+function dashboardGetCompleteOperationsSyncStatus() {
+  return operationsGetFullSyncStatus();
+}
+
