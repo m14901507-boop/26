@@ -3,7 +3,8 @@ import { validSession, type Env } from './index';
 
 type Row=unknown[];
 type H={name?:string;value?:string};
-type Msg={id?:string;labelIds?:string[];snippet?:string;internalDate?:string;payload?:{headers?:H[]}};
+type Part={mimeType?:string;body?:{data?:string};parts?:Part[]};
+type Msg={id?:string;labelIds?:string[];snippet?:string;internalDate?:string;payload?:Part&{headers?:H[]}};
 
 function cors(env:Env){return{'Access-Control-Allow-Origin':env.FRONTEND_ORIGIN||'https://m14901507-boop.github.io','Access-Control-Allow-Headers':'Content-Type,Authorization','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Credentials':'true','Vary':'Origin'};}
 function json(x:unknown,env:Env,s=200){return Response.json(x,{status:s,headers:cors(env)});}
@@ -44,21 +45,74 @@ function activeGuide(g:Row){
   if(/غير\s*مالي|أمان|الامان|تسجيل\s*الدخول/i.test(all))return false;
   return true;
 }
+function decode64url(data:string){
+  try{
+    let s=data.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';
+    const bin=atob(s),bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }catch{return'';}
+}
+function stripHtml(s:string){return s.replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/\s+/g,' ');}
+function bodyText(part?:Part):string{
+  if(!part)return'';
+  let out='';
+  if(part.body?.data){const decoded=decode64url(part.body.data);if(decoded)out+='\n'+(part.mimeType==='text/html'?stripHtml(decoded):decoded);}
+  for(const p of part.parts||[])out+='\n'+bodyText(p);
+  return out;
+}
+function messageText(m:Msg){return`${hv(m,'From')}\n${hv(m,'Subject')}\n${txt(m.snippet)}\n${bodyText(m.payload)}`;}
 function bank(text:string){const s=text.toLowerCase();if(/ahli|الأهلي|الاهلي/.test(s))return'بنك الأهلي';if(/meethaq|ميثاق/.test(s))return'ميثاق';if(/dhofar|ظفار/.test(s))return'بنك ظفار';if(/sohar|صحار/.test(s))return'بنك صحار';return'';}
-function account(text:string,b:string){if(/0108\s*[#*xX]{4,}\s*001\b/i.test(text))return'001';if(/0108\s*[#*xX]{4,}\s*002\b/i.test(text))return'002';const m=text.match(/[#*xX]{2,}(\d{1,4})\b/);let n=m?.[1]||'';if(b==='ميثاق'&&['21','021','0021'].includes(n))n='0021';if(b==='ميثاق'&&['22','022','0022'].includes(n))n='0022';return n;}
+function account(text:string,b:string){
+  const compact=text.toUpperCase().replace(/\s+/g,'');
+  if(b==='بنك الأهلي'){
+    if(/0108[0-9#X*]{3,}001/.test(compact))return'001';
+    if(/0108[0-9#X*]{3,}002/.test(compact))return'002';
+  }
+  if(b==='ميثاق'){
+    if(/0611[0-9#X*]{3,}0021/.test(compact)||/(?:ACCOUNTNUMBER|ACCOUNT|A\/C)[^0-9#X*]{0,20}[0-9#X*]{3,}0021/.test(compact))return'0021';
+    if(/0611[0-9#X*]{3,}0022/.test(compact)||/(?:ACCOUNTNUMBER|ACCOUNT|A\/C)[^0-9#X*]{0,20}[0-9#X*]{3,}0022/.test(compact))return'0022';
+  }
+  if(b==='بنك صحار'){
+    if(/70102[0-9#X*]{3,}01/.test(compact)||/(?:ACCOUNT|A\/C)[^0-9#X*]{0,20}[0-9#X*]{2,}7010/.test(compact))return'7010';
+    if(/72407[0-9#X*]{3,}01/.test(compact)||/(?:ACCOUNT|A\/C)[^0-9#X*]{0,20}[0-9#X*]{2,}7240/.test(compact))return'7240';
+  }
+  const m=text.match(/[#*xX]{2,}(\d{1,4})\b/);let n=m?.[1]||'';
+  if(b==='ميثاق'&&['21','021','0021'].includes(n))n='0021';
+  if(b==='ميثاق'&&['22','022','0022'].includes(n))n='0022';
+  return n;
+}
 function accountKey(b:string,a:string){if(b==='بنك الأهلي'&&a==='001')return'AHLI_001';if(b==='بنك الأهلي'&&a==='002')return'AHLI_002';if(b==='ميثاق'&&a==='0021')return'MEETHAQ_21';if(b==='ميثاق'&&a==='0022')return'MEETHAQ_22';if(b==='بنك صحار'&&a==='7010')return'SOHAR_7010';if(b==='بنك صحار'&&a==='7240')return'SOHAR_7240';if(b==='بنك ظفار'&&a)return`DHOFAR_${a}`;return'';}
-function amount(text:string){for(const p of[/(?:OMR|RO|O\.?R\.?)\s*([0-9][0-9,]*(?:\.[0-9]{1,3})?)/i,/([0-9][0-9,]*(?:\.[0-9]{1,3})?)\s*(?:OMR|RO|O\.?R\.?)/i]){const m=text.match(p);if(m?.[1]){const n=Number(m[1].replace(/,/g,''));if(Number.isFinite(n))return n;}}return null;}
-function balance(text:string){for(const p of[/New\s+Available\s+Balance\s*(?:is|:)?\s*OMR\s*([0-9,]+(?:\.[0-9]{1,3})?)/i,/available\s+balance\s*(?:is|:)?\s*OMR\s*([0-9,]+(?:\.[0-9]{1,3})?)/i,/Avl\s+Bal(?:ance)?\s*(?:is|:)?\s*OMR\s*([0-9,]+(?:\.[0-9]{1,3})?)/i]){const m=text.match(p);if(m?.[1]){const n=Number(m[1].replace(/,/g,''));if(Number.isFinite(n))return n;}}return null;}
-function opType(text:string){if(/credited/i.test(text))return'دخل';if(/POS Purchase|purchase|debited|withdrawal|ATM/i.test(text))return'مصروف';return'';}
+function numericAmount(v:unknown){if(v===''||v===null||v===undefined)return null;const n=Number(String(v).replace(/,/g,''));return Number.isFinite(n)?n:null;}
+function amount(text:string){
+  const lines=text.split(/\r?\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean).filter(x=>!/available\s+bal|remaining\s+bal|current\s+bal|new\s+available\s+balance|\bbalance\b/i.test(x));
+  const targeted=[/(?:amount|transaction\s+amount|purchase\s+amount|used\s+for|debited|credited|withdrawal|cash\s+withdrawal)[^\n]{0,80}?(?:OMR|RO|O\.?R\.?)\s*([0-9][0-9,]*(?:\.[0-9]{1,3})?)/i,/(?:OMR|RO|O\.?R\.?)\s*([0-9][0-9,]*(?:\.[0-9]{1,3})?)[^\n]{0,80}?(?:purchase|debited|credited|withdrawal|transaction)/i];
+  for(const line of lines)for(const p of targeted){const m=line.match(p);if(m?.[1]){const n=Number(m[1].replace(/,/g,''));if(Number.isFinite(n))return n;}}
+  for(const line of lines)for(const p of[/(?:OMR|RO|O\.?R\.?)\s*([0-9][0-9,]*(?:\.[0-9]{1,3})?)/i,/([0-9][0-9,]*(?:\.[0-9]{1,3})?)\s*(?:OMR|RO|O\.?R\.?)/i]){const m=line.match(p);if(m?.[1]){const n=Number(m[1].replace(/,/g,''));if(Number.isFinite(n))return n;}}
+  return null;
+}
+function balance(text:string){for(const p of[/New\s+Available\s+Balance\s*(?:is|:|-)?\s*(?:OMR|RO|O\.?R\.?)?\s*([0-9,]+(?:\.[0-9]{1,3})?)/i,/Your\s+available\s+balance\s*(?:is|:|-)?\s*(?:OMR|RO|O\.?R\.?)?\s*([0-9,]+(?:\.[0-9]{1,3})?)/i,/available\s+bal(?:ance)?\s*(?:is|:|-)?\s*(?:OMR|RO|O\.?R\.?)?\s*([0-9,]+(?:\.[0-9]{1,3})?)/i,/Avl\s+Bal(?:ance)?\s*(?:is|:|-)?\s*(?:OMR|RO|O\.?R\.?)?\s*([0-9,]+(?:\.[0-9]{1,3})?)/i,/(?:remaining|current)\s+balance\s*(?:is|:|-)?\s*(?:OMR|RO|O\.?R\.?)?\s*([0-9,]+(?:\.[0-9]{1,3})?)/i]){const m=text.match(p);if(m?.[1]){const n=Number(m[1].replace(/,/g,''));if(Number.isFinite(n))return n;}}return null;}
+function opType(text:string){if(/credited/i.test(text))return'دخل';if(/POS Purchase|purchase|debited|withdrawal|ATM|used\s+for/i.test(text))return'مصروف';return'';}
+function msgDate(m:Msg){const raw=hv(m,'Date')||(m.internalDate?new Date(Number(m.internalDate)).toISOString():new Date().toISOString()),d=new Date(raw);return Number.isFinite(d.getTime())?d.toISOString():raw;}
 function applyGuide(old:Row,g:Row){const r=[...old];while(r.length<20)r.push('');r[2]=txt(g[0]);r[3]=txt(g[1]);if(txt(g[3]))r[6]=txt(g[3]);r[9]=txt(g[2]);r[10]='متزامن';r[12]=txt(g[9]);r[13]=txt(g[10]);r[14]=txt(g[11]);r[16]=txt(g[1]);return r.slice(0,20);}
-function buildNew(g:Row,m:Msg){const from=hv(m,'From'),subject=hv(m,'Subject'),snippet=txt(m.snippet),text=`${from}\n${subject}\n${snippet}`,b=bank(text),a=account(text,b),amt=amount(text),bal=balance(text),raw=hv(m,'Date')||(m.internalDate?new Date(Number(m.internalDate)).toISOString():new Date().toISOString()),d=new Date(raw),date=Number.isFinite(d.getTime())?d.toISOString():raw,move=txt(g[3])||opType(text),key=accountKey(b,a);return[m.id||'',date,txt(g[0]),txt(g[1]),amt??'',subject||snippet.slice(0,240),move,opType(text),[b,a].filter(Boolean).join(' '),txt(g[2]),'متزامن',new Date().toISOString(),txt(g[9]),txt(g[10]),txt(g[11]),key,txt(g[1]),bal??'',/دخل|وارد/i.test(move)?'credit':'debit',bal!=null?date:''];}
+function enrichExisting(old:Row,g:Row,m:Msg){
+  const r=applyGuide(old,g),text=messageText(m),b=bank(text),a=account(text,b),key=accountKey(b,a),amt=amount(text),bal=balance(text),date=msgDate(m),detected=opType(text),move=txt(g[3])||detected;
+  if(!txt(r[1]))r[1]=date;
+  if(numericAmount(r[4])===null&&amt!=null)r[4]=amt;
+  if(key){r[8]=[b,a].filter(Boolean).join(' ');r[15]=key;}
+  if(move&&!txt(r[6]))r[6]=move;
+  if(bal!=null){r[17]=bal;r[19]=date;}
+  if(detected)r[18]=/دخل|وارد/i.test(detected)?'credit':'debit';
+  else if(move)r[18]=/دخل|وارد|credit/i.test(move)?'credit':'debit';
+  return r.slice(0,20);
+}
+function buildNew(g:Row,m:Msg){const subject=hv(m,'Subject'),snippet=txt(m.snippet),text=messageText(m),b=bank(text),a=account(text,b),amt=amount(text),bal=balance(text),date=msgDate(m),detected=opType(text),move=txt(g[3])||detected,key=accountKey(b,a);return[m.id||'',date,txt(g[0]),txt(g[1]),amt??'',subject||snippet.slice(0,240),move,detected,[b,a].filter(Boolean).join(' '),txt(g[2]),'متزامن',new Date().toISOString(),txt(g[9]),txt(g[10]),txt(g[11]),key,txt(g[1]),bal??'',/دخل|وارد/i.test(move)?'credit':'debit',bal!=null?date:''];}
 
 async function listPage(t:string,label:string,pageToken:string){
   const q=new URLSearchParams({labelIds:label,maxResults:'5'});if(pageToken)q.set('pageToken',pageToken);
   const d:any=await gj(`https://gmail.googleapis.com/gmail/v1/users/me/messages?${q.toString()}`,t);
   return{ids:(d.messages||[]).map((x:any)=>txt(x.id)).filter(Boolean),nextPageToken:txt(d.nextPageToken)};
 }
-async function getMsg(t:string,id:string){return gj(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`,t) as Promise<Msg>;}
+async function getMsg(t:string,id:string){return gj(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=full`,t) as Promise<Msg>;}
 async function updateRows(env:Env,t:string,changes:Array<{row:number;values:Row}>){
   if(!changes.length)return;
   const data=changes.map(x=>({range:`'العمليات'!A${x.row}:T${x.row}`,majorDimension:'ROWS',values:[x.values]}));
@@ -72,9 +126,9 @@ async function appendRows(env:Env,t:string,rows:Row[]){
 
 async function previewQuotaSafeBatch(env:Env,labelIndex:number,pageToken:string){
   const t=await token(env);
-  const ctx=await readSyncContext(env,t); // one Sheets read request for both ranges
+  const ctx=await readSyncContext(env,t);
   const valid=ctx.guideRows.filter(activeGuide);
-  if(!valid.length)return{ok:true,mode:'preview-quota-safe-batch',labels:0,labelIndex:0,scanned:0,added:0,updated:0,kept:0,ambiguous:0,changed:0,done:true,nextLabelIndex:null,nextPageToken:'',historyId:''};
+  if(!valid.length)return{ok:true,mode:'preview-quota-safe-batch',labels:0,labelIndex:0,scanned:0,added:0,updated:0,kept:0,ambiguous:0,balanceUpdated:0,amountRepaired:0,changed:0,done:true,nextLabelIndex:null,nextPageToken:'',historyId:''};
 
   const i=Math.max(0,Math.min(Number.isFinite(labelIndex)?labelIndex:0,valid.length-1));
   const currentGuide=valid[i],currentLabel=txt(currentGuide[6]);
@@ -84,7 +138,7 @@ async function previewQuotaSafeBatch(env:Env,labelIndex:number,pageToken:string)
   const page=await listPage(t,currentLabel,pageToken);
   const msgs=await Promise.all(page.ids.map(id=>getMsg(t,id)));
   const changes:Array<{row:number;values:Row}>=[],newRows:Row[]=[];
-  let updated=0,kept=0,ambiguous=0;
+  let updated=0,kept=0,ambiguous=0,balanceUpdated=0,amountRepaired=0;
 
   for(const m of msgs){
     const id=txt(m.id);if(!id)continue;
@@ -92,10 +146,12 @@ async function previewQuotaSafeBatch(env:Env,labelIndex:number,pageToken:string)
     if(matches.length!==1){if(matches.length>1)ambiguous++;continue;}
     const g=matches[0],old=existing.get(id);
     if(old){
-      const next=applyGuide(old.values,g);
+      const beforeBal=numericAmount(old.values[17]),beforeAmt=numericAmount(old.values[4]),next=enrichExisting(old.values,g,m),afterBal=numericAmount(next[17]),afterAmt=numericAmount(next[4]);
+      if(afterBal!==null&&(beforeBal===null||afterBal!==beforeBal))balanceUpdated++;
+      if(beforeAmt===null&&afterAmt!==null)amountRepaired++;
       if(JSON.stringify(next)!==JSON.stringify(old.values.slice(0,20))){changes.push({row:old.row,values:next});updated++;}else kept++;
     }else{
-      const row=buildNew(g,m);newRows.push(row);existing.set(id,{row:0,values:row});
+      const row=buildNew(g,m);newRows.push(row);existing.set(id,{row:0,values:row});if(numericAmount(row[17])!==null)balanceUpdated++;if(numericAmount(row[4])!==null)amountRepaired++;
     }
   }
   await updateRows(env,t,changes);
@@ -106,7 +162,7 @@ async function previewQuotaSafeBatch(env:Env,labelIndex:number,pageToken:string)
   const done=!nextPageToken&&nextLabelIndex>=valid.length;
   let historyId='';
   if(done){const profile:any=await gj('https://gmail.googleapis.com/gmail/v1/users/me/profile',t);historyId=txt(profile.historyId);}
-  return{ok:true,mode:'preview-quota-safe-batch',historyId,labels:valid.length,labelIndex:i,labelName:txt(currentGuide[0]),scanned:msgs.length,added:newRows.length,updated,kept,ambiguous,changed:newRows.length+updated,done,nextLabelIndex:done?null:nextLabelIndex,nextPageToken:done?'':nextPageToken};
+  return{ok:true,mode:'preview-quota-safe-batch',historyId,labels:valid.length,labelIndex:i,labelName:txt(currentGuide[0]),scanned:msgs.length,added:newRows.length,updated,kept,ambiguous,balanceUpdated,amountRepaired,changed:newRows.length+updated,done,nextLabelIndex:done?null:nextLabelIndex,nextPageToken:done?'':nextPageToken};
 }
 
 export default{async fetch(request:Request,env:Env):Promise<Response>{
