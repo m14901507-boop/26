@@ -12,6 +12,7 @@
 var OPERATIONS_COMPLETE_SYNC = Object.freeze({
   STATE_PROPERTY: 'OPERATIONS_COMPLETE_SYNC_STATE_V1',
   TRIGGER_HANDLER: 'operationsCompleteSyncTick',
+  AUTOMATIC_TRIGGER_HANDLER: 'operationsAutomaticSyncTick',
   PAGE_SIZE: 25,
   MAX_FAILURES_PER_PAGE: 3
 });
@@ -65,6 +66,7 @@ function operationsFullSyncStart() {
 
   operationsCompleteSaveState_(state);
   operationsCompleteInstallTrigger_();
+  installOperationsAutomaticSync();
 
   return operationsCompleteSyncBatch_();
 }
@@ -93,17 +95,13 @@ function operationsFullSyncResume() {
 
 
 /**
- * مشغل الدقيقة. عند عدم وجود مزامنة كاملة يشغل المزامنة السريعة فقط.
+ * مشغل الدقيقة المستخدم فقط لاستكمال المزامنة الكاملة.
  */
 function operationsCompleteSyncTick() {
   var state = operationsCompleteReadState_();
 
   if (state && state.status === 'running') {
     return operationsCompleteSyncBatch_();
-  }
-
-  if (typeof operationsRegisterFastDetailed === 'function') {
-    return operationsRegisterFastDetailed();
   }
 
   return { success: true, idle: true };
@@ -448,6 +446,7 @@ function operationsCompleteFinish_(state, ss) {
   }
 
   operationsCompleteSaveState_(state);
+  operationsCompleteDeleteTriggers_();
 
   var result = operationsCompletePublicResult_(state);
   operationsSaveLastResult_(result);
@@ -553,12 +552,37 @@ function operationsCompleteDeleteTriggers_() {
  * يثبت مشغل المزامنة المستمرة: يكمل المزامنة الكاملة أو يفحص الجديد.
  */
 function installOperationsAutomaticSync() {
-  operationsCompleteInstallTrigger_();
+  var exists = ScriptApp.getProjectTriggers().some(function(trigger) {
+    return trigger.getHandlerFunction() ===
+      OPERATIONS_COMPLETE_SYNC.AUTOMATIC_TRIGGER_HANDLER;
+  });
+
+  if (!exists) {
+    ScriptApp.newTrigger(OPERATIONS_COMPLETE_SYNC.AUTOMATIC_TRIGGER_HANDLER)
+      .timeBased()
+      .everyMinutes(5)
+      .create();
+  }
 
   return {
     success: true,
-    message: 'تم تشغيل مزامنة العمليات التلقائية كل دقيقة.'
+    message: 'تم تشغيل فحص العمليات الجديدة تلقائيًا كل خمس دقائق.'
   };
+}
+
+
+function operationsAutomaticSyncTick() {
+  var state = operationsCompleteReadState_();
+
+  if (state && state.status === 'running') {
+    return operationsCompletePublicResult_(state);
+  }
+
+  if (typeof operationsRegisterFastDetailed === 'function') {
+    return operationsRegisterFastDetailed();
+  }
+
+  return { success: true, idle: true };
 }
 
 
