@@ -2092,7 +2092,15 @@ function operationsEnsureHeaders(
 
 
   } else {
+    var genericHeaders = currentHeaders.every(function(value, index) {
+      return appText(value).toLowerCase() === 'column ' + (index + 1);
+    });
 
+    if (genericHeaders) {
+      sheet
+        .getRange(1, 1, 1, OPERATIONS_HEADERS.length)
+        .setValues([Array.from(OPERATIONS_HEADERS)]);
+    } else {
     var aliases = {
       '#': 'التصنيف',
       'النوع': 'التصنيف',
@@ -2156,6 +2164,7 @@ function operationsEnsureHeaders(
         '\nالعناوين الموجودة فعليًا: ' +
         JSON.stringify(currentHeaders)
       );
+    }
     }
 
   }
