@@ -2093,7 +2093,23 @@ function operationsEnsureHeaders(
 
   } else {
 
+    var aliases = {
+      '#': 'التصنيف',
+      'النوع': 'التصنيف',
+      'نوع التصنيف': 'التصنيف',
+      'الفئة': 'التصنيف',
+      'وقت العملية': 'التاريخ والوقت',
+      'التاريخ': 'التاريخ والوقت',
+      'المعرف': 'معرف الرسالة'
+    };
+
+    var repairedHeaders = currentHeaders.map(function(value) {
+      var current = appText(value);
+      return aliases[current] || current;
+    });
+
     var errors = [];
+    var exactMatches = 0;
 
 
     OPERATIONS_HEADERS.forEach(
@@ -2104,16 +2120,13 @@ function operationsEnsureHeaders(
 
         var current =
           appText(
-            currentHeaders[index]
+            repairedHeaders[index]
           );
 
 
-        if (
-          current !==
-          appText(
-            expected
-          )
-        ) {
+        if (current === appText(expected)) {
+          exactMatches++;
+        } else {
 
           errors.push(
 
@@ -2124,26 +2137,25 @@ function operationsEnsureHeaders(
 
           );
 
+          repairedHeaders[index] = expected;
+
         }
 
       }
     );
 
 
-    if (
-      errors.length > 0
-    ) {
-
+    if (errors.length > 0 && exactMatches >= 8) {
+      sheet
+        .getRange(1, 1, 1, OPERATIONS_HEADERS.length)
+        .setValues([repairedHeaders]);
+    } else if (errors.length > 0) {
       throw new Error(
-
         'عناوين ورقة العمليات غير مطابقة:\n' +
-
-        errors.join(
-          '\n'
-        )
-
+        errors.join('\n') +
+        '\nالعناوين الموجودة فعليًا: ' +
+        JSON.stringify(currentHeaders)
       );
-
     }
 
   }
@@ -15065,3 +15077,4 @@ function diagnoseRepeated63UpdatesV1() {
   return result;
 
 }
+
