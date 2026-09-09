@@ -1,5 +1,5 @@
 import current from './router21';
-import type { Env } from './index';
+import { validSession, type Env } from './index';
 type Row=unknown[];
 type H={name?:string;value?:string};
 type Msg={id?:string;labelIds?:string[];snippet?:string;internalDate?:string;payload?:{headers?:H[]}};
@@ -7,7 +7,7 @@ function cors(env:Env){return{'Access-Control-Allow-Origin':env.FRONTEND_ORIGIN|
 function json(x:unknown,env:Env,s=200){return Response.json(x,{status:s,headers:cors(env)});}
 function txt(v:unknown){return String(v??'').trim();}
 function hv(m:Msg,n:string){return(m.payload?.headers||[]).find(x=>(x.name||'').toLowerCase()===n.toLowerCase())?.value||'';}
-async function auth(req:Request,env:Env){const u=new URL(req.url);u.pathname='/auth/status';const r=await current.fetch(new Request(u.toString(),{headers:req.headers}),env);const d:any=await r.json().catch(()=>({}));return !!d?.authenticated;}
+async function auth(req:Request,env:Env){return validSession(req,env);}
 async function token(env:Env){const b=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID.trim(),client_secret:env.GOOGLE_CLIENT_SECRET.trim(),refresh_token:env.GOOGLE_REFRESH_TOKEN.trim(),grant_type:'refresh_token'});const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});const d:any=await r.json().catch(()=>({}));if(!r.ok||!d.access_token)throw new Error(d.error_description||d.error||`OAuth ${r.status}`);return String(d.access_token);}
 async function gj(url:string,t:string,init:RequestInit={}){const r=await fetch(url,{...init,headers:{Authorization:`Bearer ${t}`,Accept:'application/json',...(init.headers||{})}});const d:any=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d?.error?.message||`Google API ${r.status}`);return d;}
 async function read(env:Env,t:string,name:string,range:string){const rg=encodeURIComponent(`'${name}'!${range}`);const d:any=await gj(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(env.SPREADSHEET_ID.trim())}/values/${rg}?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING`,t);const v:Row[]=d.values||[];return{headers:v[0]||[],rows:v.slice(1)};}
