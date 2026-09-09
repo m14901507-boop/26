@@ -3,7 +3,7 @@
     const token=sessionStorage.getItem('floosy_preview_session');
     const headers={Accept:'application/json',...(opt.headers||{})};
     if(token)headers.Authorization='Bearer '+token;
-    const response=await fetch(API+path,{...opt,headers,credentials:'omit'});
+    const response=await fetch(API+path,{...opt,headers,credentials:'include'});
     const data=await response.json().catch(()=>({}));
     if(response.status===401){
       if(path!=='/auth/login')sessionStorage.removeItem('floosy_preview_session');
@@ -69,3 +69,4 @@
   };
   const r=document.getElementById('refresh');if(r)r.onclick=refresh;
 })();
+
