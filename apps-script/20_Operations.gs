@@ -1427,7 +1427,9 @@ function operationsWriteNewRows_(
 
   operationsSheet,
 
-  records
+  records,
+
+  skipFormatting
 
 ) {
 
@@ -1493,15 +1495,13 @@ function operationsWriteNewRows_(
     );
 
 
-  operationsApplyFormats_(
-
-    operationsSheet,
-
-    startRow,
-
-    records.length
-
-  );
+  if (!skipFormatting) {
+    operationsApplyFormats_(
+      operationsSheet,
+      startRow,
+      records.length
+    );
+  }
 
 }
 
