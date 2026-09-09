@@ -45,7 +45,7 @@
   all.addEventListener('click',()=>run('all',all,false));
 
   async function autoSync(){
-    if(document.visibilityState!=='visible'||!sessionStorage.getItem('floosy_preview_session')||busy)return;
+    if(document.visibilityState!=='visible'||!(sessionStorage.getItem('floosy_preview_session')||localStorage.getItem('floosy_preview_session'))||busy)return;
     await run('operations',null,true);
   }
   // لا تبدأ أي مزامنة أثناء تسجيل الدخول أو مباشرة بعده.
