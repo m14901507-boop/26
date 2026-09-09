@@ -17,12 +17,13 @@
   };
   function columnMap(){
     const headers=(DATA.opHeaders||[]).map(h=>String(h??'').trim().replace(/[\u200e\u200f\u061c\ufeff]/g,''));
-    const names={id:'معرف الرسالة',date:'التاريخ والوقت',item:'البند',classification:'التصنيف',amount:'المبلغ',desc:'الطرف',movement:'نوع العملية',bank:'البنك',accountKey:'معرف الحساب',sourceBudget:'مصدر الموازنة'};
+    const required={id:'معرف الرسالة',date:'التاريخ والوقت',item:'البند',classification:'التصنيف',amount:'المبلغ',desc:'الطرف',movement:'نوع العملية',bank:'البنك'};
+    const optional={accountKey:'معرف الحساب',sourceBudget:'مصدر الموازنة'};
+    const fallback={accountKey:15,sourceBudget:16};
+    const find=(name,requiredField)=>{const first=headers.indexOf(name);if(first>=0&&headers.indexOf(name,first+1)>=0)throw new Error('عنوان مكرر: '+name);if(first<0&&requiredField)throw new Error('عنوان مفقود: '+name);return first;};
     const map={};
-    for(const [key,name] of Object.entries(names))map[key]=headers.indexOf(name);
-    // Fixed A:T fallback for the current operations sheet.
-    const fallback={id:0,date:1,item:2,classification:3,amount:4,desc:5,movement:6,bank:8,accountKey:15,sourceBudget:16};
-    for(const key of Object.keys(fallback))if(map[key]<0)map[key]=fallback[key];
+    for(const [key,name] of Object.entries(required))map[key]=find(name,true);
+    for(const [key,name] of Object.entries(optional)){const ix=find(name,false);map[key]=ix>=0?ix:fallback[key];}
     return map;
   }
   function latin(v){return String(v??'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).trim();}
@@ -55,7 +56,7 @@
   allOps=function(){
     const rows=Array.isArray(DATA.operations)?DATA.operations:[];if(!rows.length)return [];
     const ix=columnMap();
-    return rows.filter(r=>Array.isArray(r)&&r.some(v=>String(v??'').trim()!=='')).map(r=>{
+    return rows.filter(r=>Array.isArray(r)&&r.some(v=>String(v??'').trim()!=='' )).map(r=>{
       const rawDate=r[ix.date],d=parseDate(rawDate),monthKey=operationMonth(rawDate);
       const item=String(r[ix.item]??'').trim(),classification=String(r[ix.classification]??'').trim(),amount=amountValue(r[ix.amount]),desc=String(r[ix.desc]??'').trim(),movement=String(r[ix.movement]??'').trim(),bankRaw=String(r[ix.bank]??'').trim(),accountKeyRaw=String(r[ix.accountKey]??'').trim(),sourceBudget=String(r[ix.sourceBudget]??'').trim();
       const ai=accountFromKey(accountKeyRaw,bankRaw),budget=budgetName(sourceBudget||classification)||'غير مصنف';
@@ -82,5 +83,6 @@
   };
 
   // Changing the month must not retain an old week that hides the new month's rows.
-  document.getElementById('month')?.addEventListener('change',()=>{const w=document.getElementById('weekFilter');if(w)w.value='';setTimeout(()=>{updateWeekUi();syncDependentFilters();renderAll();},0);});
+  const monthInput=document.getElementById('month');
+  if(monthInput&&typeof monthInput.addEventListener==='function')monthInput.addEventListener('change',()=>{const w=document.getElementById('weekFilter');if(w)w.value='';setTimeout(()=>{updateWeekUi();syncDependentFilters();renderAll();},0);});
 })();
