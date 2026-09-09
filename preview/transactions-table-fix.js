@@ -8,7 +8,9 @@
   function latinDigits(value){
     return String(value ?? '')
       .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
-      .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+      .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+      .replace(/[\u200e\u200f\u061c\ufeff]/g,'')
+      .replace(/\u00a0/g,' ');
   }
 
   function validLocal(y,m,d,h=0,mi=0,s=0){
@@ -16,16 +18,31 @@
     return x.getFullYear()===y&&x.getMonth()===m-1&&x.getDate()===d&&x.getHours()===h&&x.getMinutes()===mi&&x.getSeconds()===s;
   }
   function localDate(y,m,d,h=0,mi=0,s=0){return validLocal(y,m,d,h,mi,s)?new Date(y,m-1,d,h,mi,s):null;}
+  function hour24(h,ampm){
+    let n=Number(h);if(!Number.isFinite(n)||n<1||n>12)return null;
+    const p=String(ampm||'').toUpperCase();
+    if(p==='AM'&&n===12)n=0;
+    if(p==='PM'&&n!==12)n+=12;
+    return n;
+  }
+  function sheetSerial(value){
+    const n=Number(value);if(!Number.isFinite(n)||n<=20000)return null;
+    const ms=Math.round(n*86400000);
+    const u=new Date(Date.UTC(1899,11,30)+ms);
+    if(!Number.isFinite(u.getTime()))return null;
+    return new Date(u.getUTCFullYear(),u.getUTCMonth(),u.getUTCDate(),u.getUTCHours(),u.getUTCMinutes(),u.getUTCSeconds());
+  }
 
   parseDate=function(v){
     if(v instanceof Date)return isNaN(v)?null:v;
-    if(typeof v==='number'&&Number.isFinite(v)&&v>20000){
-      const ms=Math.round(Number(v)*86400000);
-      const u=new Date(Date.UTC(1899,11,30)+ms);
-      return new Date(u.getUTCFullYear(),u.getUTCMonth(),u.getUTCDate(),u.getUTCHours(),u.getUTCMinutes(),u.getUTCSeconds());
-    }
+    if(typeof v==='number')return sheetSerial(v);
     const s=latinDigits(v).trim();
     if(!s)return null;
+
+    // Google Sheets serial returned as text.
+    if(/^\d{5}(?:\.\d+)?$/.test(s)){
+      const serial=sheetSerial(s);if(serial)return serial;
+    }
 
     // ISO absolute timestamps -> Oman local time.
     if(/^\d{4}-\d{1,2}-\d{1,2}T.*(?:Z|[+-]\d{2}:?\d{2})$/i.test(s)){
@@ -35,16 +52,29 @@
     }
 
     // yyyy-MM-dd [HH:mm:ss]
-    let m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)?$/);
+    let m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:[ T,]+(\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)?$/);
     if(m)return localDate(+m[1],+m[2],+m[3],+(m[4]||0),+(m[5]||0),+(m[6]||0));
 
-    // dd/MM/yyyy [HH:mm:ss] — this is the sheet's operation format.
+    // yyyy-MM-dd hh:mm[:ss] AM/PM
+    m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})[ T,]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i);
+    if(m){const h=hour24(m[4],m[7]);return h==null?null:localDate(+m[1],+m[2],+m[3],h,+m[5],+(m[6]||0));}
+
+    // dd/MM/yyyy [HH:mm:ss] — primary sheet operation format.
     m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4}|\d{2})(?:[ T,]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
     if(m){let y=+m[3];if(y<100)y+=2000;return localDate(y,+m[2],+m[1],+(m[4]||0),+(m[5]||0),+(m[6]||0));}
+
+    // dd/MM/yyyy, hh:mm[:ss] AM/PM — legacy/browser formatted rows.
+    m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4}|\d{2})[ T,]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i);
+    if(m){let y=+m[3];if(y<100)y+=2000;const h=hour24(m[4],m[7]);return h==null?null:localDate(y,+m[2],+m[1],h,+m[5],+(m[6]||0));}
 
     // HH:mm[:ss] dd/MM/yyyy
     m=s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s+(\d{1,2})[\/-](\d{1,2})[\/-](\d{4}|\d{2})$/);
     if(m){let y=+m[6];if(y<100)y+=2000;return localDate(y,+m[5],+m[4],+m[1],+m[2],+(m[3]||0));}
+
+    // RFC/English email dates such as "Wed, 09 Sep 2026 10:30:00 +0400".
+    if(/[A-Za-z]{3}/.test(s)||/(?:GMT|UTC|[+-]\d{4})$/i.test(s)){
+      const native=new Date(s);if(Number.isFinite(native.getTime()))return native;
+    }
     return null;
   };
 
