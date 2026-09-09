@@ -26,7 +26,7 @@
     for(const [key,name] of Object.entries(optional)){const ix=find(name,false);map[key]=ix>=0?ix:fallback[key];}
     return map;
   }
-  function latin(v){return String(v??'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).trim();}
+  function latin(v){return String(v??'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[\u200e\u200f\u061c\ufeff]/g,'').replace(/\u00a0/g,' ').trim();}
   function operationMonth(raw){
     if(typeof raw==='number'&&Number.isFinite(raw)&&raw>20000){const d=parseDate(raw);return d?mk(d):'';}
     const s=latin(raw);let m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4}|\d{2})/);
@@ -37,9 +37,18 @@
   }
   function amountValue(v){
     if(typeof v==='number')return Number.isFinite(v)?Math.abs(v):NaN;
-    const s=latin(v).replace(/٬/g,',').replace(/٫/g,'.');
+    let s=latin(v).replace(/٬/g,',').replace(/٫/g,'.').trim();
+    if(!s)return NaN;
+    // Accept the legacy formats used in FLOOSY sheets, e.g. OMR 12.500, 12.500 OMR, ر.ع 12.500.
+    s=s
+      .replace(/^\((.*)\)$/,'-$1')
+      .replace(/[−–—]/g,'-')
+      .replace(/(?:OMR|O\.?R\.?|RO|R\.O\.?|ر\.?\s*ع\.?|ريال\s*عماني)/gi,'')
+      .replace(/\s+/g,'')
+      .trim();
     if(!/^[+-]?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(s))return NaN;
-    return Math.abs(Number(s.replace(/,/g,'')));
+    const n=Number(s.replace(/,/g,''));
+    return Number.isFinite(n)?Math.abs(n):NaN;
   }
   function accountFromKey(key,bankRaw){
     const k=String(key||'').trim();
