@@ -28,9 +28,17 @@
       catch(e){
         lastError=e;
         if(e&&e.status===401)throw e;
+        const message=String(e?.message||e||'');
+        const quota=/Quota exceeded|Read requests per minute|RESOURCE_EXHAUSTED/i.test(message);
         if(attempt<2){
-          setStatus(`تعذر الاتصال مؤقتًا — إعادة المحاولة ${attempt+1}/2…`);
-          await sleep(700*(attempt+1));
+          if(quota){
+            const wait=20000*(attempt+1);
+            setStatus(`تم بلوغ حد Google Sheets مؤقتًا — انتظار ${wait/1000} ثانية ثم إعادة المحاولة…`);
+            await sleep(wait);
+          }else{
+            setStatus(`تعذر الاتصال مؤقتًا — إعادة المحاولة ${attempt+1}/2…`);
+            await sleep(1000*(attempt+1));
+          }
         }
       }
     }
@@ -43,7 +51,7 @@
   async function pagedFullSync(progress){
     let labelIndex=0,pageToken='',pages=0;
     const total={scanned:0,added:0,updated:0,kept:0,ambiguous:0,labels:0};
-    while(pages<2000){
+    while(pages<1000){
       let path='/api/preview/sync/full?labelIndex='+encodeURIComponent(labelIndex);
       if(pageToken)path+='&pageToken='+encodeURIComponent(pageToken);
       const r=await safePageRequest(path);
@@ -59,7 +67,8 @@
       if(r.done)return total;
       labelIndex=Number(r.nextLabelIndex||0);
       pageToken=String(r.nextPageToken||'');
-      await sleep(120);
+      // خمس رسائل لكل دفعة + فاصل ثانيتين لإبقاء قراءات/كتابات Sheets تحت الحصة الدقيقة.
+      await sleep(2000);
     }
     throw new Error('توقفت المزامنة بعد عدد كبير من الدفعات للحماية. أعد تشغيل المزامنة.');
   }
