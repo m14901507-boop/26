@@ -7,8 +7,14 @@
     const response=await fetch(API+path,{...opt,headers,credentials:'include'});
     const data=await response.json().catch(()=>({}));
     if(response.status===401){
-      if(path!=='/auth/login'){sessionStorage.removeItem('floosy_preview_session');localStorage.removeItem('floosy_preview_session');}
-      const error=new Error(data.error&&data.error!=='Unauthorized'?data.error:'انتهت جلسة FLOOSY. سجّل الدخول مرة أخرى.');
+      if(path!=='/auth/login'){
+        sessionStorage.removeItem('floosy_preview_session');
+        localStorage.removeItem('floosy_preview_session');
+      }
+      const message=data.error&&data.error!=='Unauthorized'
+        ?data.error
+        :(path==='/auth/login'?'تعذر تسجيل الدخول. تحقق من كلمة المرور.':'انتهت جلسة FLOOSY. سجّل الدخول مرة أخرى.');
+      const error=new Error(message);
       error.status=401;
       throw error;
     }
@@ -22,12 +28,27 @@
     sessionStorage.removeItem('floosy_preview_session');
     localStorage.removeItem('floosy_preview_session');
     try{
-      const data=await req('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('password').value})});
+      const data=await req('/auth/login',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({password:$('password').value})
+      });
+      if(!data.session)throw new Error('الخادم لم يُرجع جلسة تسجيل دخول.');
+
       sessionStorage.setItem('floosy_preview_session',data.session);
       localStorage.setItem('floosy_preview_session',data.session);
+
+      // Verify the newly issued token before requesting protected data.
+      const status=await req('/auth/status?ts='+Date.now());
+      if(!status.authenticated){
+        sessionStorage.removeItem('floosy_preview_session');
+        localStorage.removeItem('floosy_preview_session');
+        throw new Error('تم قبول كلمة المرور لكن الخادم لم يقبل الجلسة الجديدة. يلزم تحديث Cloudflare Worker.');
+      }
+
       $('password').value='';
-      setStatus('تم تسجيل الدخول. جاري تحميل البيانات...',true);
-      refresh();
+      setStatus('تم تسجيل الدخول بنجاح. جاري تحميل البيانات...',true);
+      await refresh();
     }catch(error){
       setStatus(error.message||String(error));
       $('loginBox').style.display='block';
@@ -35,6 +56,11 @@
   };
 
   refresh=async function(){
+    if(!authToken()){
+      setStatus('الواجهة جاهزة. أدخل كلمة المرور لتسجيل الدخول.');
+      $('loginBox').style.display='block';
+      return;
+    }
     setStatus('جاري تحميل بيانات Google Sheets...');
     const get=path=>req(path).catch(error=>({__error:error}));
     try{
@@ -72,4 +98,3 @@
   };
   const r=document.getElementById('refresh');if(r)r.onclick=refresh;
 })();
-
