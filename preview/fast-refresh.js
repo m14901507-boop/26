@@ -1,4 +1,36 @@
 (()=>{
+  req=async function(path,opt={}){
+    const token=sessionStorage.getItem('floosy_preview_session');
+    const headers={Accept:'application/json',...(opt.headers||{})};
+    if(token)headers.Authorization='Bearer '+token;
+    const response=await fetch(API+path,{...opt,headers,credentials:'omit'});
+    const data=await response.json().catch(()=>({}));
+    if(response.status===401){
+      if(path!=='/auth/login')sessionStorage.removeItem('floosy_preview_session');
+      const error=new Error(data.error&&data.error!=='Unauthorized'?data.error:'انتهت جلسة FLOOSY. سجّل الدخول مرة أخرى.');
+      error.status=401;
+      throw error;
+    }
+    if(!response.ok)throw new Error(data.error||('API '+response.status));
+    return data;
+  };
+
+  const loginForm=document.getElementById('loginForm');
+  if(loginForm)loginForm.onsubmit=async event=>{
+    event.preventDefault();
+    sessionStorage.removeItem('floosy_preview_session');
+    try{
+      const data=await req('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('password').value})});
+      sessionStorage.setItem('floosy_preview_session',data.session);
+      $('password').value='';
+      setStatus('تم تسجيل الدخول. جاري تحميل البيانات...',true);
+      refresh();
+    }catch(error){
+      setStatus(error.message||String(error));
+      $('loginBox').style.display='block';
+    }
+  };
+
   refresh=async function(){
     setStatus('جاري تحميل بيانات Google Sheets...');
     const get=path=>req(path).catch(error=>({__error:error}));
@@ -32,7 +64,7 @@
       setStatus(warnings.length?`تم تحميل العمليات — تعذر مؤقتًا: ${warnings.join('، ')}`:`متصل — ${DATA.operations.length} عملية، ${balanceMap().size} رصيد مؤكد`,warnings.length===0);
     }catch(e){
       setStatus(e.message||String(e));
-      if(String(e.message).includes('Unauthorized'))$('loginBox').style.display='block';
+      if(e.status===401||String(e.message).includes('Unauthorized')||String(e.message).includes('جلسة'))$('loginBox').style.display='block';
     }
   };
   const r=document.getElementById('refresh');if(r)r.onclick=refresh;
