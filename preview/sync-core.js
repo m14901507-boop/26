@@ -20,14 +20,40 @@
   }
   function saveHistory(r){if(r&&r.historyId)localStorage.setItem('floosy_gmail_history_id',String(r.historyId));}
 
+  async function pagedFullSync(progress){
+    let labelIndex=0,pageToken='',pages=0;
+    const total={scanned:0,added:0,updated:0,kept:0,ambiguous:0,labels:0};
+    while(pages<1000){
+      let path='/api/preview/sync/full?labelIndex='+encodeURIComponent(labelIndex);
+      if(pageToken)path+='&pageToken='+encodeURIComponent(pageToken);
+      const r=await req(path,{method:'POST'});
+      saveHistory(r);
+      total.labels=Number(r.labels||total.labels||0);
+      total.scanned+=Number(r.scanned||0);
+      total.added+=Number(r.added||0);
+      total.updated+=Number(r.updated||0);
+      total.kept+=Number(r.kept||0);
+      total.ambiguous+=Number(r.ambiguous||0);
+      pages++;
+      if(progress)progress(total,r,pages);
+      if(r.done)return total;
+      labelIndex=Number(r.nextLabelIndex||0);
+      pageToken=String(r.nextPageToken||'');
+    }
+    throw new Error('توقفت المزامنة بعد عدد كبير من الدفعات للحماية. أعد تشغيل المزامنة.');
+  }
+
   async function fullOperations(button){
     if(busy)return;busy=true;
-    const old=button.textContent;button.disabled=true;button.textContent='فحص جميع الرسائل…';
+    const old=button.textContent;button.disabled=true;button.textContent='فحص الرسائل…';
     try{
-      const r=await req('/api/preview/sync/full',{method:'POST'});
-      saveHistory(r);
+      const total=await pagedFullSync((t,r)=>{
+        const current=Math.min(Number(r.labelIndex||0)+1,Number(r.labels||1));
+        button.textContent=`فحص ${t.scanned} رسالة…`;
+        setStatus(`مزامنة العمليات — البند ${current}/${r.labels||0} — تم فحص ${t.scanned} رسالة`,true);
+      });
       await refresh();
-      setStatus(`مزامنة كاملة — فحص ${r.scanned||0} رسالة، جديد ${r.added||0}، تحديث ${r.updated||0}، موجود ${r.kept||0}${r.ambiguous?`، تعارض ${r.ambiguous}`:''}`,true);
+      setStatus(`مزامنة كاملة — فحص ${total.scanned} رسالة، جديد ${total.added}، تحديث ${total.updated}، موجود ${total.kept}${total.ambiguous?`، تعارض ${total.ambiguous}`:''}`,true);
     }catch(e){if(!showAuthError(e))setStatus(e.message||String(e));}
     finally{busy=false;button.disabled=false;button.textContent=old;}
   }
@@ -46,12 +72,17 @@
 
   async function syncAll(button){
     if(busy)return;busy=true;
-    const old=button.textContent;button.disabled=true;button.textContent='مزامنة شاملة…';
+    const old=button.textContent;button.disabled=true;button.textContent='تحديث البنود…';
     try{
       const itemResult=await req('/api/sync/items',{method:'POST'});saveHistory(itemResult);
-      const r=await req('/api/preview/sync/full',{method:'POST'});saveHistory(r);
+      button.textContent='فحص الرسائل…';
+      const total=await pagedFullSync((t,r)=>{
+        const current=Math.min(Number(r.labelIndex||0)+1,Number(r.labels||1));
+        button.textContent=`فحص ${t.scanned} رسالة…`;
+        setStatus(`مزامنة الكل — البنود ${itemResult.updated||0} تحديث — البند ${current}/${r.labels||0} — فحص ${t.scanned}`,true);
+      });
       await refresh();
-      setStatus(`مزامنة الكل — البنود ${itemResult.updated||0} تحديث، الرسائل ${r.scanned||0} مفحوصة، جديد ${r.added||0}، تحديث ${r.updated||0}${r.ambiguous?`، تعارض ${r.ambiguous}`:''}`,true);
+      setStatus(`مزامنة الكل — البنود ${itemResult.updated||0} تحديث، الرسائل ${total.scanned} مفحوصة، جديد ${total.added}، تحديث ${total.updated}${total.ambiguous?`، تعارض ${total.ambiguous}`:''}`,true);
     }catch(e){if(!showAuthError(e))setStatus(e.message||String(e));}
     finally{busy=false;button.disabled=false;button.textContent=old;}
   }
