@@ -1,12 +1,12 @@
-(()=>{
+(()=>{\n  const authToken=()=>sessionStorage.getItem('floosy_preview_session')||localStorage.getItem('floosy_preview_session');
   req=async function(path,opt={}){
-    const token=sessionStorage.getItem('floosy_preview_session');
+    const token=authToken();
     const headers={Accept:'application/json',...(opt.headers||{})};
     if(token)headers.Authorization='Bearer '+token;
     const response=await fetch(API+path,{...opt,headers,credentials:'include'});
     const data=await response.json().catch(()=>({}));
     if(response.status===401){
-      if(path!=='/auth/login')sessionStorage.removeItem('floosy_preview_session');
+      if(path!=='/auth/login'){sessionStorage.removeItem('floosy_preview_session');localStorage.removeItem('floosy_preview_session');}
       const error=new Error(data.error&&data.error!=='Unauthorized'?data.error:'انتهت جلسة FLOOSY. سجّل الدخول مرة أخرى.');
       error.status=401;
       throw error;
@@ -21,7 +21,7 @@
     sessionStorage.removeItem('floosy_preview_session');
     try{
       const data=await req('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('password').value})});
-      sessionStorage.setItem('floosy_preview_session',data.session);
+      sessionStorage.setItem('floosy_preview_session',data.session);\n      localStorage.setItem('floosy_preview_session',data.session);
       $('password').value='';
       setStatus('تم تسجيل الدخول. جاري تحميل البيانات...',true);
       refresh();
