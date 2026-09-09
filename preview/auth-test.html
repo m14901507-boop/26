@@ -11,10 +11,10 @@ body{margin:0;background:#050505;color:#fff;font-family:Tahoma,"Segoe UI",Arial,
 <body>
 <div class="card">
   <h1>اختبار تسجيل الدخول — FLOOSY Preview</h1>
-  <p>هذه صفحة اختبار منفصلة عن لوحة العرض. تختبر تسجيل الدخول ثم الجلسة ثم طلبًا محميًا بدون تحميل بقية ملفات الواجهة.</p>
+  <p>اختبار مستقل يفحص جلسة FLOOSY ثم اتصال Google ثم طلب العمليات.</p>
   <form id="f"><input id="p" type="password" autocomplete="current-password" placeholder="كلمة مرور FLOOSY" required><button>ابدأ الاختبار</button></form>
   <div class="steps" id="steps"></div>
-  <small>لا يتم حفظ كلمة المرور في الصفحة أو localStorage. يتم إرسالها مباشرة إلى Cloudflare Worker عبر HTTPS.</small>
+  <small>لا يتم حفظ كلمة المرور. الاختبار لا يعدّل بيانات Google Sheets.</small>
 </div>
 <script>
 const API='https://floosy-api.m14901507.workers.dev';
@@ -24,7 +24,7 @@ async function jsonFetch(path,opt={}){const r=await fetch(API+path,opt);const d=
 document.getElementById('f').addEventListener('submit',async e=>{
   e.preventDefault();steps.innerHTML='';
   const password=document.getElementById('p').value;
-  let s=line('1) فحص /auth/login ...');
+  let s=line('1) فحص تسجيل الدخول...');
   try{
     const login=await jsonFetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({password})});
     document.getElementById('p').value='';
@@ -32,18 +32,23 @@ document.getElementById('f').addEventListener('submit',async e=>{
     if(!login.d.session){s.textContent='1) تم قبول كلمة المرور لكن لم يرجع الخادم session';s.className='step bad';return}
     s.textContent='1) تسجيل الدخول نجح والخادم أعاد session';s.className='step ok';
     const token=login.d.session;
+    const headers={'Accept':'application/json','Authorization':'Bearer '+token};
 
-    s=line('2) فحص /auth/status باستخدام Bearer session ...');
-    const status=await jsonFetch('/auth/status?ts='+Date.now(),{headers:{'Accept':'application/json','Authorization':'Bearer '+token}});
+    s=line('2) فحص الجلسة...');
+    const status=await jsonFetch('/auth/status?ts='+Date.now(),{headers});
     if(!status.r.ok||!status.d.authenticated){s.textContent=`2) الجلسة مرفوضة — HTTP ${status.r.status}, authenticated=${String(status.d.authenticated)}`;s.className='step bad';return}
     s.textContent='2) الجلسة مقبولة من الخادم';s.className='step ok';
 
-    s=line('3) فحص /api/operations باستخدام نفس session ...');
-    const ops=await jsonFetch('/api/operations?ts='+Date.now(),{headers:{'Accept':'application/json','Authorization':'Bearer '+token}});
-    if(!ops.r.ok){s.textContent=`3) الطلب المحمي فشل — HTTP ${ops.r.status}: ${ops.d.error||'بدون رسالة'}`;s.className='step bad';return}
-    s.textContent=`3) نجاح كامل — العمليات متاحة (${Array.isArray(ops.d.rows)?ops.d.rows.length:0} صف)`;s.className='step ok';
+    s=line('3) فحص اتصال Google OAuth...');
+    const google=await jsonFetch('/api/google/status?ts='+Date.now(),{headers});
+    if(!google.r.ok||google.d.ok===false){s.textContent=`3) اتصال Google فشل — HTTP ${google.r.status}: ${google.d.error||google.d.message||JSON.stringify(google.d)}`;s.className='step bad';return}
+    s.textContent='3) اتصال Google OAuth سليم';s.className='step ok';
 
-    line('النتيجة: نظام تسجيل الدخول والـWorker يعملان. إذا ظهرت Unauthorized في لوحة العرض فالمشكلة داخل ملفات واجهة preview نفسها.','ok');
+    s=line('4) فحص /api/operations...');
+    const ops=await jsonFetch('/api/operations?ts='+Date.now(),{headers});
+    if(!ops.r.ok){s.textContent=`4) طلب العمليات فشل — HTTP ${ops.r.status}: ${ops.d.error||'بدون رسالة'}`;s.className='step bad';return}
+    s.textContent=`4) نجاح كامل — العمليات متاحة (${Array.isArray(ops.d.rows)?ops.d.rows.length:0} صف)`;s.className='step ok';
+    line('النتيجة: المصادقة واتصال Google ومسار العمليات تعمل كلها.','ok');
   }catch(err){line('خطأ اتصال: '+(err.message||String(err)),'bad')}
 });
 </script>
