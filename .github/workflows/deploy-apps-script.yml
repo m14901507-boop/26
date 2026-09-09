@@ -1,0 +1,66 @@
+name: Deploy Apps Script
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps-script/**"
+      - ".github/workflows/deploy-apps-script.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-apps-script
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check deployment settings
+        id: settings
+        env:
+          APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          if [[ -n "$APPS_SCRIPT_ID" && -n "$CLASPRC_JSON" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Apps Script deployment skipped until APPS_SCRIPT_ID and CLASPRC_JSON are configured."
+          fi
+
+      - name: Check out repository
+        if: steps.settings.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: steps.settings.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install clasp
+        if: steps.settings.outputs.ready == 'true'
+        run: npm install --global @google/clasp
+
+      - name: Configure Apps Script access
+        if: steps.settings.outputs.ready == 'true'
+        env:
+          APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          node -e 'JSON.parse(require("fs").readFileSync(process.env.HOME + "/.clasprc.json", "utf8"))'
+          node -e 'require("fs").writeFileSync("apps-script/.clasp.json", JSON.stringify({scriptId: process.env.APPS_SCRIPT_ID, rootDir: "."}))'
+
+      - name: Push complete Apps Script project
+        if: steps.settings.outputs.ready == 'true'
+        working-directory: apps-script
+        run: clasp push --force
+

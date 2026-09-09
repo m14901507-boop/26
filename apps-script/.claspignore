@@ -1,0 +1,6 @@
+**/*.md
+**/*.map
+node_modules/**
+.clasp.json
+.clasprc.json
+
