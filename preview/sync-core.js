@@ -8,6 +8,7 @@
   refreshBtn.parentNode?.insertBefore(wrap,refreshBtn);wrap.append(ops,items,all,refreshBtn);
 
   let busy=false,lastAuto=0;
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   const hasSession=()=>Boolean(sessionStorage.getItem('floosy_preview_session')||localStorage.getItem('floosy_preview_session'));
   function showAuthError(e){
     if(e&&e.status===401){
@@ -20,13 +21,32 @@
   }
   function saveHistory(r){if(r&&r.historyId)localStorage.setItem('floosy_gmail_history_id',String(r.historyId));}
 
+  async function safePageRequest(path){
+    let lastError=null;
+    for(let attempt=0;attempt<3;attempt++){
+      try{return await req(path,{method:'POST'});}
+      catch(e){
+        lastError=e;
+        if(e&&e.status===401)throw e;
+        if(attempt<2){
+          setStatus(`تعذر الاتصال مؤقتًا — إعادة المحاولة ${attempt+1}/2…`);
+          await sleep(700*(attempt+1));
+        }
+      }
+    }
+    if(lastError&&String(lastError.message||lastError)==='Failed to fetch'){
+      throw new Error('تعذر الاتصال بـ Cloudflare أثناء المزامنة. تمت المحاولة 3 مرات. أعد المحاولة بعد لحظات.');
+    }
+    throw lastError||new Error('تعذر إكمال المزامنة.');
+  }
+
   async function pagedFullSync(progress){
     let labelIndex=0,pageToken='',pages=0;
     const total={scanned:0,added:0,updated:0,kept:0,ambiguous:0,labels:0};
-    while(pages<1000){
+    while(pages<2000){
       let path='/api/preview/sync/full?labelIndex='+encodeURIComponent(labelIndex);
       if(pageToken)path+='&pageToken='+encodeURIComponent(pageToken);
-      const r=await req(path,{method:'POST'});
+      const r=await safePageRequest(path);
       saveHistory(r);
       total.labels=Number(r.labels||total.labels||0);
       total.scanned+=Number(r.scanned||0);
@@ -39,6 +59,7 @@
       if(r.done)return total;
       labelIndex=Number(r.nextLabelIndex||0);
       pageToken=String(r.nextPageToken||'');
+      await sleep(120);
     }
     throw new Error('توقفت المزامنة بعد عدد كبير من الدفعات للحماية. أعد تشغيل المزامنة.');
   }
