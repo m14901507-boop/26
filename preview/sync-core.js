@@ -29,7 +29,14 @@
         setStatus(`تمت المزامنة — جديد ${r.added||0}، تحديث ${r.updated||0}، حذف ${r.removed||0}${r.ambiguous?`، تعارض ${r.ambiguous}`:''}${partial}`,true);
       }
       return r;
-    }catch(e){if(!silent)setStatus(e.message||String(e));}
+    }catch(e){
+      if(e&&e.status===401){
+        sessionStorage.removeItem('floosy_preview_session');
+        const loginBox=document.getElementById('loginBox');
+        if(loginBox)loginBox.style.display='block';
+        setStatus('انتهت جلسة FLOOSY. سجّل الدخول مرة أخرى.');
+      }else if(!silent)setStatus(e.message||String(e));
+    }
     finally{busy=false;if(button){button.disabled=false;button.textContent=old;}}
   }
 
@@ -45,3 +52,4 @@
   setTimeout(autoSync,120000);
   setInterval(autoSync,300000);
 })();
+
