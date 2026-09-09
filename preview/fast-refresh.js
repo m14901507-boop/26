@@ -1,4 +1,5 @@
-(()=>{\n  const authToken=()=>sessionStorage.getItem('floosy_preview_session')||localStorage.getItem('floosy_preview_session');
+(()=>{
+  const authToken=()=>sessionStorage.getItem('floosy_preview_session')||localStorage.getItem('floosy_preview_session');
   req=async function(path,opt={}){
     const token=authToken();
     const headers={Accept:'application/json',...(opt.headers||{})};
@@ -19,9 +20,11 @@
   if(loginForm)loginForm.onsubmit=async event=>{
     event.preventDefault();
     sessionStorage.removeItem('floosy_preview_session');
+    localStorage.removeItem('floosy_preview_session');
     try{
       const data=await req('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('password').value})});
-      sessionStorage.setItem('floosy_preview_session',data.session);\n      localStorage.setItem('floosy_preview_session',data.session);
+      sessionStorage.setItem('floosy_preview_session',data.session);
+      localStorage.setItem('floosy_preview_session',data.session);
       $('password').value='';
       setStatus('تم تسجيل الدخول. جاري تحميل البيانات...',true);
       refresh();
