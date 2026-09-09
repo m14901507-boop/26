@@ -33,3 +33,36 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Smoke test FLOOSY auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          API='https://floosy-api.m14901507.workers.dev'
+
+          echo '--- health ---'
+          curl -fsS "$API/health"
+          echo
+
+          echo '--- auth status without session ---'
+          curl -fsS "$API/auth/status"
+          echo
+
+          echo '--- verify FLOOSY_PASSWORD is configured ---'
+          code=$(curl -sS -o /tmp/floosy-login.json -w '%{http_code}' \
+            -X POST "$API/auth/login" \
+            -H 'Content-Type: application/json' \
+            --data '{}')
+          echo "empty-login-http=$code"
+          cat /tmp/floosy-login.json
+          echo
+
+          if [ "$code" = '503' ]; then
+            echo 'FLOOSY_PASSWORD is missing from the deployed Worker.'
+            exit 1
+          fi
+
+          if [ "$code" != '401' ]; then
+            echo "Unexpected auth/login response: HTTP $code"
+            exit 1
+          fi
