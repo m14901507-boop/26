@@ -5,6 +5,13 @@
     return /غير\s*مصنف|بدون\s*تصنيف|غير\s*مصن[فّ]|unclassified|uncategorized|not\s*classified/.test(s);
   };
 
+  // Unclassified Gmail messages stay in Gmail until the user labels them there.
+  // They must not behave like a financial item or affect FLOOSY totals.
+  try{
+    const baseAllOps=allOps;
+    allOps=function(){return baseAllOps().filter(x=>!isGmailUnclassified(x?.item));};
+  }catch(e){}
+
   function cleanQuickActions(){
     document.querySelectorAll('.focus-actions').forEach(x=>x.remove());
     const hero=document.getElementById('focusHero');
