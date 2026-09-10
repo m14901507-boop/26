@@ -34,17 +34,34 @@
       return{value:complete?partial:null,partialValue:partial,label:complete?'كل الحسابات':`غير مكتمل — ${confirmed.length}/${known.length} حسابات`,count:confirmed.length,total:known.length,complete,missing:missing.map(x=>x.label),date:''};
     };
   }catch(e){}
+
+  function fixedBalanceAccounts(){
+    const reg=accountRegistry(),bm=balanceMap(),m=new Map();
+    for(const ai of reg.values())if(ai&&ai.key)m.set(ai.key,{...ai});
+    for(const x of bm.values())if(x&&x.key&&!m.has(x.key))m.set(x.key,{bank:x.bank,number:x.number,key:x.key,label:x.label});
+    return[...m.values()].sort((a,b)=>String(a.bank||'').localeCompare(String(b.bank||''),'ar')||String(a.number||'').localeCompare(String(b.number||''),'en',{numeric:true}));
+  }
+
   try{
     renderAccounts=function(){
-      const s=summary(),bm=balanceMap(),selected=selectedBalance(),reg=accountRegistry(),rows=[...reg.values()];
-      const totalText=selected.value==null?'—':money(selected.value),countText=selected.total?`${selected.count}/${selected.total}`:String(selected.count||0);
-      kpis('accountKpis',[['الرصيد المؤكد',totalText,selected.label,'green'],['أرصدة مؤكدة',countText,selected.complete?'كل الحسابات مؤكدة':'يوجد حسابات بلا رصيد حديث'],['عدد العمليات',s.ops.length,s.label],['الخارج',money(s.spent),'','red'],['الداخل',money(s.income),'','green'],['الحساب المحدد',selected.label,'']]);
+      const s=summary(),bm=balanceMap(),rows=fixedBalanceAccounts();
+      const confirmed=rows.filter(ai=>bm.has(ai.key));
+      const cards=rows.map(ai=>{
+        const lb=bm.get(ai.key),title=`${ai.bank} — حساب ${ai.number}`;
+        return[title,lb?money(lb.balance):'—',lb?.date?`آخر رصيد مؤكد: ${formatBalanceDate(lb.date)}`:'لا يوجد رصيد مؤكد بعد',lb?'green':'gold'];
+      });
+      if(!cards.length)cards.push(['الأرصدة المؤكدة','—','لم يتم اكتشاف حسابات بعد','gold']);
+      kpis('accountKpis',cards);
+
       bars('accountBars',[...bm.values()].map(x=>({k:x.label,v:x.balance})));
       $('accountChart').innerHTML=svgTrend(temporalRepeatData());
-      const balanceInsight=selected.complete
-        ?['good','الرصيد المؤكد',money(selected.value)]
-        :['warn','الرصيد غير مكتمل',selected.partialValue==null?'لا توجد أرصدة مؤكدة بعد':`المجموع الجزئي ${money(selected.partialValue)} — المفقود: ${(selected.missing||[]).join('، ')||'حساب غير محدد'}`];
-      insights('accountInsights',[balanceInsight,['good','الحساب',selected.label],['warn','المصدر','أحدث رصيد فعلي محفوظ لكل حساب في Google Sheets']]);
+      const complete=rows.length>0&&confirmed.length===rows.length;
+      const total=confirmed.reduce((sum,ai)=>sum+Number(bm.get(ai.key)?.balance||0),0);
+      const balanceInsight=complete
+        ?['good','إجمالي الأرصدة المؤكدة',money(total)]
+        :['warn','الأرصدة المؤكدة',`${confirmed.length}/${rows.length} حسابات لديها رصيد مؤكد — لا يتم عرض مجموع ناقص على أنه إجمالي مؤكد`];
+      insights('accountInsights',[balanceInsight,['good','طريقة العرض','بطاقة ثابتة لكل حساب — لا تعتمد على اختيار الموازنة أو فلاتر الصفحة'],['warn','المصدر','أحدث رصيد فعلي محفوظ لكل حساب في Google Sheets']]);
+
       $('accountTable').innerHTML=rows.map(ai=>{const os=s.ops.filter(x=>x.accountKey===ai.key),out=spendOps().filter(x=>x.accountKey===ai.key).reduce((a,c)=>a+c.amount,0),inc=os.filter(x=>!/تحويل\s*داخلي|تحويلات\s*داخلية|internal\s*transfer/i.test(x.movement)&&/دخل|وارد|credit|income/i.test(x.movement)).reduce((a,c)=>a+c.amount,0),lb=bm.get(ai.key);return`<tr><td>${esc(ai.bank)}</td><td class="account-no">${esc(ai.number)}</td><td>${lb?money(lb.balance):'غير مؤكد'}</td><td>${lb?.date?esc(formatBalanceDate(lb.date)):'—'}</td><td>${os.length}</td><td>${money(out)}</td><td>${money(inc)}</td></tr>`}).join('');
     };
   }catch(e){}
