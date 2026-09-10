@@ -15,7 +15,12 @@
   function cleanQuickActions(){
     document.querySelectorAll('.focus-actions').forEach(x=>x.remove());
     const hero=document.getElementById('focusHero');
-    if(hero)hero.style.gridTemplateColumns='1fr';
+    if(hero){
+      // Legacy quick-actions used to force a single column. The new behavior indicator
+      // intentionally uses the freed space beside the financial summary.
+      if(hero.querySelector('.behavior-card'))hero.style.removeProperty('grid-template-columns');
+      else hero.style.gridTemplateColumns='1fr';
+    }
   }
 
   function cleanGmailPlaceholders(){
