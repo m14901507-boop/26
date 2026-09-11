@@ -54,6 +54,27 @@
   function assocMode(on){host.classList.toggle('active',on);if(genericFilter)genericFilter.style.display=on?'none':'';if(on)setTimeout(syncHost,100);}
   function childDoc(){try{return frame?.contentDocument||null}catch(e){return null}}
   function syncChildSelection(){const doc=childDoc(),hostSel=document.getElementById('hostAssocSelect'),child=doc?.getElementById('associationSelect');if(child&&hostSel?.value&&child.value!==hostSel.value){child.value=hostSel.value;child.dispatchEvent(new Event('change',{bubbles:true}));}}
+  function ensureAssociationData(force=false){
+    try{
+      const session=sessionStorage.getItem('floosy_preview_session')||'';
+      const w=frame?.contentWindow,doc=childDoc();
+      if(!session||!w||!doc)return;
+      try{w.sessionStorage.setItem('floosy_preview_session',session);}catch(e){}
+      const text=doc.getElementById('status')?.textContent||'';
+      if(!force&&/^تم تحميل/.test(text))return;
+      if(!force&&!/الدخول|Unauthorized|غير مصرح|جاري تحميل|تعذر/i.test(text)&&text.trim())return;
+      if(typeof w.load==='function')Promise.resolve(w.load()).finally(()=>setTimeout(syncHost,80));
+      else setTimeout(()=>ensureAssociationData(force),180);
+    }catch(e){}
+  }
+  function activateAssociationPage(){
+    document.querySelectorAll('.nav-btn').forEach(x=>x.classList.toggle('active',x===assocBtn));
+    document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id==='associations-pro'));
+    assocMode(true);
+    const title=document.getElementById('pageTitle');if(title)title.textContent='الجمعيات';
+    const p=document.querySelector('.headline p');if(p)p.textContent='إدارة الأعضاء والأدوار والدفعات والإشعارات من مكان واحد.';
+    setTimeout(()=>ensureAssociationData(false),100);
+  }
 
   frame?.addEventListener('load',()=>{
     try{
@@ -67,7 +88,7 @@
       const s3=doc.createElement('script');s3.src='association-cycle-windows.js?v=1';doc.body.appendChild(s3);
       const resize=()=>{try{frame.style.height=Math.max(900,doc.documentElement.scrollHeight+20)+'px';}catch(e){}};
       resize();new MutationObserver(()=>{resize();syncHost();}).observe(doc.body,{subtree:true,childList:true,attributes:true});
-      doc.addEventListener('change',()=>setTimeout(syncHost,40));doc.addEventListener('input',()=>setTimeout(syncHost,40));window.addEventListener('resize',resize,{passive:true});setTimeout(syncHost,300);
+      doc.addEventListener('change',()=>setTimeout(syncHost,40));doc.addEventListener('input',()=>setTimeout(syncHost,40));window.addEventListener('resize',resize,{passive:true});setTimeout(syncHost,300);setTimeout(()=>ensureAssociationData(false),220);
     }catch(e){}
   });
 
@@ -78,5 +99,9 @@
   document.getElementById('hostAssocDelete')?.addEventListener('click',()=>{try{syncChildSelection();const w=frame?.contentWindow;if(typeof w?.__floosyAssociationDelete==='function')w.__floosyAssociationDelete();else childDoc()?.getElementById('deleteAssociationAction')?.click();}catch(e){}});
   window.addEventListener('message',e=>{if(e.origin===location.origin&&e.data?.type==='floosy-association-updated')setTimeout(syncHost,80);});
 
-  nav.addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(!b)return;const on=b===assocBtn;setTimeout(()=>assocMode(on),0);if(on){const title=document.getElementById('pageTitle');if(title)title.textContent='الجمعيات';const p=document.querySelector('.headline p');if(p)p.textContent='إدارة الأعضاء والأدوار والدفعات والإشعارات من مكان واحد.';}});
+  nav.addEventListener('click',e=>{
+    const b=e.target.closest('.nav-btn,[data-page]');if(!b)return;
+    if(b===assocBtn){e.preventDefault();activateAssociationPage();return;}
+    if(b.dataset?.page)assocMode(false);
+  });
 })();
