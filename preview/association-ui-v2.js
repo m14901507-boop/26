@@ -16,12 +16,22 @@
   function setLabel(id,text){const l=labelOf(id);if(!l)return;for(const n of l.childNodes){if(n.nodeType===3&&String(n.textContent||'').trim()){n.textContent=text;return;}}l.insertBefore(document.createTextNode(text),l.firstChild);}
   function syncEnd(){const s=$('startMonth')?.value,d=Number($('durationMonths')?.value||0),e=$('associationEndDate');if(s&&d>0&&e)e.value=addMonths(s,d);if($('firstPayoutMonth'))$('firstPayoutMonth').value=s||'';}
   function syncDuration(){const s=$('startMonth')?.value,e=$('associationEndDate')?.value;if(s&&e&&$('durationMonths'))$('durationMonths').value=monthsBetween(s,e)||$('durationMonths').value;}
+  function localAssociation(){
+    try{
+      const id=$('associationSelect')?.value||'';
+      if(typeof DATA!=='undefined'&&Array.isArray(DATA?.associations))return DATA.associations.find(x=>String(x.associationId)===String(id))||null;
+    }catch(e){}
+    return null;
+  }
   async function loadExtended(){
     const sel=$('associationSelect'),planned=$('associationPlannedMembers'),end=$('associationEndDate');if(!sel||!planned||!end)return;
     try{
-      const token=sessionStorage.getItem('floosy_preview_session');if(!token)return;
-      const r=await originalFetch(API+'/api/preview/associations',{headers:{Accept:'application/json',Authorization:'Bearer '+token},credentials:'omit'});if(!r.ok)return;
-      const d=await r.json();const a=(d.associations||[]).find(x=>String(x.associationId)===String(sel.value));
+      let a=localAssociation();
+      if(!a){
+        const session=sessionStorage.getItem('floosy_preview_session');if(!session)return;
+        const r=await originalFetch(API+'/api/preview/associations',{headers:{Accept:'application/json',Authorization:'Bearer '+session},credentials:'omit'});if(!r.ok)return;
+        const d=await r.json();a=(d.associations||[]).find(x=>String(x.associationId)===String(sel.value))||null;
+      }
       if(a){planned.value=a.plannedMembers||'';end.value=a.endDate||addMonths(a.startMonth,a.durationMonths);}
       else{planned.value='';end.value='';}
     }catch(e){}
@@ -42,7 +52,7 @@
       }catch(e){}
     }
     const r=await originalFetch(input,nextInit);
-    if(url.includes('/api/preview/associations/upsert')&&r.ok)setTimeout(loadExtended,250);
+    if(url.includes('/api/preview/associations/upsert')&&r.ok)setTimeout(loadExtended,800);
     return r;
   };
   function enhance(){
