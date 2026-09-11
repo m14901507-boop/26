@@ -79,7 +79,7 @@
       const status=doc.getElementById('status');if(status)status.style.marginTop='0';
       const s1=doc.createElement('script');s1.src='association-ui-v2.js?v=3';doc.body.appendChild(s1);
       const s2=doc.createElement('script');s2.src='association-actions-v3.js?v=2';doc.body.appendChild(s2);
-      const s3=doc.createElement('script');s3.src='association-cycle-windows.js?v=2';doc.body.appendChild(s3);
+      const s3=doc.createElement('script');s3.src='association-cycle-windows.js?v=3';doc.body.appendChild(s3);
       const resize=()=>{try{frame.style.height=Math.max(900,doc.documentElement.scrollHeight+20)+'px';}catch(e){}};
       resize();new MutationObserver(()=>{resize();syncHost();}).observe(doc.body,{subtree:true,childList:true,attributes:true});
       doc.addEventListener('change',()=>setTimeout(syncHost,40));doc.addEventListener('input',()=>setTimeout(syncHost,40));window.addEventListener('resize',resize,{passive:true});setTimeout(syncHost,300);setTimeout(()=>ensureAssociationData(false),220);
