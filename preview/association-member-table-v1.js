@@ -1,0 +1,65 @@
+(()=>{
+  if(window.__floosyAssociationMemberTableV1)return;window.__floosyAssociationMemberTableV1=true;
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money=v=>Number(v||0).toLocaleString('en-US',{minimumFractionDigits:3,maximumFractionDigits:3})+' ر.ع';
+  const fmtDate=v=>{if(!v)return'—';const d=new Date(String(v).length===7?v+'-01':v);return isNaN(d)?String(v):d.toLocaleDateString('ar-OM',{year:'numeric',month:'short',day:String(v).length>7?'numeric':undefined})};
+  const getData=()=>{try{return typeof DATA!=='undefined'&&DATA?DATA:{associations:[],members:[],payments:[]}}catch(e){return{associations:[],members:[],payments:[]}}};
+  const current=()=>{try{return typeof currentId!=='undefined'?String(currentId||''):String($('associationSelect')?.value||'')}catch(e){return String($('associationSelect')?.value||'')}};
+  let installed=false,lastSig='',timer=0;
+
+  function style(){if($('assocMemberTableStyle'))return;const s=document.createElement('style');s.id='assocMemberTableStyle';s.textContent=`
+    #associationMembersView #memberCards,#associationMembersView .sectionHead{display:none!important}
+    .assoc-member-table-wrap{border:1px solid #263b51;border-radius:15px;background:#091018;overflow:auto;max-height:650px;box-shadow:0 16px 36px rgba(0,0,0,.16)}
+    .assoc-member-table{width:100%;border-collapse:collapse;font-size:10px;min-width:1250px}.assoc-member-table th,.assoc-member-table td{padding:9px 8px;border-bottom:1px solid #213247;text-align:right;white-space:nowrap;vertical-align:middle}.assoc-member-table th{position:sticky;top:0;z-index:3;background:#0d1721;color:#9fb2c6;font-weight:700}.assoc-member-table tbody tr:hover td{background:rgba(22,141,242,.045)}.assoc-member-table tbody tr.selected td{background:rgba(22,141,242,.08)}
+    .assoc-member-table .name{font-weight:800;color:#fff}.assoc-member-table .contact{color:#9eb0c2}.assoc-member-table .turn{display:inline-grid;place-items:center;min-width:30px;height:25px;padding:0 7px;border-radius:8px;border:1px solid rgba(255,210,74,.35);color:#ffe078;background:rgba(255,210,74,.05);font-weight:800}.assoc-member-table .ok{color:#65e9b7}.assoc-member-table .bad{color:#ff8d9b}.assoc-member-table .muted{color:#7f93a8}.assoc-member-actions{display:flex;gap:5px}.assoc-member-actions .btn{padding:6px 8px;font-size:9px;min-height:29px}.assoc-member-count{margin:7px 2px 10px;color:#8094a9;font-size:9px}
+    @media(max-width:760px){.assoc-member-table-wrap{max-height:none}.assoc-member-table{min-width:1080px}}
+  `;document.head.appendChild(s)}
+
+  function association(){const d=getData(),id=current();return (d.associations||[]).find(a=>String(a.associationId)===id)||null}
+  function rows(){
+    const d=getData(),id=current(),q=String($('memberSearch')?.value||'').trim().toLowerCase(),filter=String($('memberFilter')?.value||'');
+    return (d.members||[]).filter(m=>m.active!==false&&String(m.associationId)===id&&(!filter||String(m.memberId)===filter)&&(!q||[m.name,m.phone,m.email].some(v=>String(v||'').toLowerCase().includes(q)))).sort((a,b)=>Number(a.turnNo||0)-Number(b.turnNo||0)||String(a.name||'').localeCompare(String(b.name||''),'ar'))
+  }
+  function summary(m){
+    try{if(typeof memberSummary==='function')return memberSummary(m)}catch(e){}
+    const d=getData(),a=association(),mine=(d.payments||[]).filter(p=>String(p.associationId)===current()&&String(p.memberId)===String(m.memberId)).sort((x,y)=>String(y.date||'').localeCompare(String(x.date||'')));
+    const paidTotal=mine.reduce((s,p)=>s+Number(p.amount||0),0),paidCount=mine.length,expCount=a?.durationMonths?Math.ceil(Number(a.durationMonths)/Math.max(1,Number(a.paymentEveryMonths)||1)):0,expTotal=expCount*Number(a?.contributionAmount||0);
+    return{mine,paidTotal,paidCount,expCount,expTotal,last:mine[0]||null,overdue:0}
+  }
+  function payoutText(m){
+    try{const r=window.__floosyAssociationPayoutWindow?.(Number(m.turnNo||0));if(r?.text)return r.text}catch(e){}
+    try{if(typeof payoutDate==='function')return fmtDate(payoutDate(association(),m))}catch(e){}
+    return'—'
+  }
+  function render(force=false){
+    const body=$('assocMemberTableBody'),count=$('assocMemberTableCount');if(!body)return;
+    const a=association(),arr=rows();
+    const sig=JSON.stringify({id:current(),q:$('memberSearch')?.value||'',f:$('memberFilter')?.value||'',members:arr.map(m=>[m.memberId,m.name,m.email,m.phone,m.turnNo]),payments:(getData().payments||[]).filter(p=>String(p.associationId)===current()).map(p=>[p.paymentId,p.memberId,p.date,p.amount]),share:a?.contributionAmount||0});
+    if(!force&&sig===lastSig)return;lastSig=sig;if(count)count.textContent=`${arr.length} عضو ظاهر`;
+    if(!arr.length){body.innerHTML='<tr><td colspan="13" style="padding:28px;text-align:center;color:#8296aa">لا توجد أعضاء مطابقة في الجمعية الحالية.</td></tr>';return}
+    body.innerHTML=arr.map(m=>{const s=summary(m),last=s.last||s.mine?.[0]||null,over=Number(s.overdue||0)>0,selected=(typeof selectedMemberId!=='undefined'&&String(selectedMemberId||'')===String(m.memberId));return `<tr class="${selected?'selected':''}" data-member-id="${esc(m.memberId)}"><td><span class="turn">${Number(m.turnNo||0)}</span></td><td class="name">${esc(m.name||'—')}</td><td>${money(a?.contributionAmount||0)}</td><td>${esc(payoutText(m))}</td><td class="contact">${esc(m.phone||'—')}</td><td class="contact">${esc(m.email||'—')}</td><td>${Number(s.paidCount||0)}${Number(s.expCount||0)?' / '+Number(s.expCount):''}</td><td>${money(s.paidTotal||0)}</td><td>${last?fmtDate(last.date):'—'}</td><td>${last?money(last.amount):'—'}</td><td class="${over?'bad':'ok'}">${over?'متأخر '+money(s.overdue):'منتظم'}</td><td><div class="assoc-member-actions"><button class="btn sm" data-member-action="detail" data-id="${esc(m.memberId)}">تفاصيل</button><button class="btn sm green" data-member-action="pay" data-id="${esc(m.memberId)}">استلام</button><button class="btn sm" data-member-action="edit" data-id="${esc(m.memberId)}">تعديل</button><button class="btn sm red" data-member-action="delete" data-id="${esc(m.memberId)}">حذف</button></div></td></tr>`}).join('')
+  }
+  function schedule(force=false){clearTimeout(timer);timer=setTimeout(()=>render(force),70)}
+  function memberById(id){return (getData().members||[]).find(m=>String(m.memberId)===String(id))||null}
+  function selectForDetail(id){
+    try{selectedMemberId=id}catch(e){}
+    try{if(typeof renderDetail==='function')renderDetail()}catch(e){}
+    schedule(true);
+    setTimeout(()=>$('memberDetail')?.scrollIntoView({behavior:'smooth',block:'start'}),40)
+  }
+  function clickHiddenDelete(id){const b=[...document.querySelectorAll('#memberCards button[data-act="delete"]')].find(x=>String(x.dataset.id)===String(id));b?.click()}
+  function install(){
+    const view=$('associationMembersView'),tools=view?.querySelector('.assoc-member-tools');if(!view||!tools)return false;style();
+    let wrap=$('assocMemberTableWrap');if(!wrap){
+      const count=document.createElement('div');count.id='assocMemberTableCount';count.className='assoc-member-count';tools.after(count);
+      wrap=document.createElement('div');wrap.id='assocMemberTableWrap';wrap.className='assoc-member-table-wrap';count.after(wrap);
+      wrap.innerHTML='<table class="assoc-member-table"><thead><tr><th>الدور</th><th>اسم العضو</th><th>قيمة السهم</th><th>فترة الاستلام</th><th>الهاتف</th><th>البريد الإلكتروني</th><th>عدد الدفعات</th><th>إجمالي الدفعات</th><th>آخر دفع</th><th>مبلغ آخر دفعة</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody id="assocMemberTableBody"></tbody></table>';
+      wrap.addEventListener('click',e=>{const b=e.target.closest('[data-member-action]');if(!b)return;const id=b.dataset.id,act=b.dataset.memberAction,m=memberById(id);if(!m)return;if(act==='edit'){try{if(typeof openMemberEditor==='function')openMemberEditor(m)}catch(err){};return}if(act==='delete'){clickHiddenDelete(id);return}selectForDetail(id);if(act==='pay')setTimeout(()=>$('paymentAmount')?.focus(),380)});
+    }
+    if(!installed){installed=true;$('memberSearch')?.addEventListener('input',()=>schedule(true));$('memberFilter')?.addEventListener('change',()=>schedule(true));$('associationSelect')?.addEventListener('change',()=>schedule(true));}
+    render(true);return true
+  }
+  let tries=0,wait=setInterval(()=>{if(install()||++tries>50)clearInterval(wait)},100);
+  new MutationObserver(()=>schedule(false)).observe(document.body||document.documentElement,{subtree:true,childList:true,characterData:true});
+})();
