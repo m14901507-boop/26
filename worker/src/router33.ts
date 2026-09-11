@@ -54,12 +54,41 @@ async function loadResilient(env:Env,t:string){
   const phones=new Map(phoneRows.slice(1).filter(r=>txt(r?.[0])).map(r=>[txt(r[0]),txt(r[1])]));
   const ext=new Map(extRows.slice(1).filter(r=>txt(r?.[0])).map(r=>[txt(r[0]),{plannedMembers:num(r[1]),endDate:txt(r[2])}]));
   const rawAssociations=Math.max(0,aRows.length-1),rawMembers=Math.max(0,mRows.length-1),rawPayments=Math.max(0,pRows.length-1);
-  const associations=aRows.slice(1).map((r,i)=>assocObj(r,i+2)).filter(a=>a.associationId&&a.active!==false).map(a=>({...a,...(ext.get(a.associationId)||{plannedMembers:0,endDate:''})}));
+
+  const allAssociations=aRows.slice(1).map((r,i)=>assocObj(r,i+2)).filter(a=>a.associationId);
+  const allAssociationIds=new Set(allAssociations.map(a=>a.associationId));
+  const associations=allAssociations.filter(a=>a.active!==false).map(a=>({...a,...(ext.get(a.associationId)||{plannedMembers:0,endDate:''})}));
   const activeIds=new Set(associations.map(a=>a.associationId));
-  const members=mRows.slice(1).map((r,i)=>memberObj(r,i+2)).filter(m=>m.memberId&&m.active!==false&&activeIds.has(m.associationId)).map(m=>({...m,phone:phones.get(m.memberId)||''}));
-  const memberIds=new Set(members.map(m=>m.memberId));
-  const payments=pRows.slice(1).map((r,i)=>paymentObj(r,i+2)).filter(p=>p.paymentId&&activeIds.has(p.associationId)&&memberIds.has(p.memberId));
-  return{ok:true,associations,members,payments,diagnostics:{rawAssociations,rawMembers,rawPayments,visibleAssociations:associations.length,visibleMembers:members.length,visiblePayments:payments.length,ignoredAssociations:Math.max(0,rawAssociations-associations.length),ignoredMembers:Math.max(0,rawMembers-members.length),ignoredPayments:Math.max(0,rawPayments-payments.length),optionalMissing}};
+  const soleAssociationId=associations.length===1?associations[0].associationId:'';
+
+  let recoveredMembers=0;
+  const allMembers=mRows.slice(1).map((r,i)=>memberObj(r,i+2)).filter(m=>m.memberId&&m.active!==false);
+  const members:any[]=[];
+  for(const m of allMembers){
+    if(activeIds.has(m.associationId)){
+      members.push({...m,phone:phones.get(m.memberId)||''});
+      continue;
+    }
+    const orphan=!m.associationId||!allAssociationIds.has(m.associationId);
+    if(soleAssociationId&&orphan){
+      recoveredMembers++;
+      members.push({...m,associationId:soleAssociationId,phone:phones.get(m.memberId)||'',recoveredAssociationLink:true});
+    }
+  }
+
+  const memberById=new Map(members.map(m=>[m.memberId,m]));
+  let recoveredPayments=0;
+  const allPayments=pRows.slice(1).map((r,i)=>paymentObj(r,i+2)).filter(p=>p.paymentId);
+  const payments:any[]=[];
+  for(const p of allPayments){
+    const member:any=memberById.get(p.memberId);
+    if(!member)continue;
+    if(activeIds.has(p.associationId)&&member.associationId===p.associationId){payments.push(p);continue;}
+    const orphan=!p.associationId||!allAssociationIds.has(p.associationId);
+    if(soleAssociationId&&orphan){recoveredPayments++;payments.push({...p,associationId:member.associationId,recoveredAssociationLink:true});}
+  }
+
+  return{ok:true,associations,members,payments,diagnostics:{rawAssociations,rawMembers,rawPayments,visibleAssociations:associations.length,visibleMembers:members.length,visiblePayments:payments.length,ignoredAssociations:Math.max(0,rawAssociations-associations.length),ignoredMembers:Math.max(0,rawMembers-members.length),ignoredPayments:Math.max(0,rawPayments-payments.length),recoveredMembers,recoveredPayments,optionalMissing}};
 }
 
 export default{async fetch(request:Request,env:Env):Promise<Response>{
