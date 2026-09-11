@@ -62,7 +62,7 @@
       const wrap=doc.querySelector('.wrap');if(wrap){wrap.style.maxWidth='none';wrap.style.padding='12px';}
       doc.documentElement.style.background='#05070a';doc.body.style.background='#05070a';
       const status=doc.getElementById('status');if(status)status.style.marginTop='0';
-      const s1=doc.createElement('script');s1.src='association-ui-v2.js?v=2';doc.body.appendChild(s1);
+      const s1=doc.createElement('script');s1.src='association-ui-v2.js?v=3';doc.body.appendChild(s1);
       const s2=doc.createElement('script');s2.src='association-actions-v3.js?v=1';doc.body.appendChild(s2);
       const s3=doc.createElement('script');s3.src='association-cycle-windows.js?v=1';doc.body.appendChild(s3);
       const resize=()=>{try{frame.style.height=Math.max(900,doc.documentElement.scrollHeight+20)+'px';}catch(e){}};
