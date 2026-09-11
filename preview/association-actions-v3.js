@@ -48,12 +48,6 @@
     try{status('جاري حذف العضو…');await api('/api/preview/associations/member/delete',{memberId});$('refresh')?.click();status('تم حذف العضو من القائمة مع الاحتفاظ بسجل الدفعات.','good');}
     catch(e){status(e.message||String(e),'bad');}
   }
-  function addAssociationButtons(){
-    const group=$('newAssociation')?.parentElement;if(!group||$('editAssociationAction'))return;
-    const edit=document.createElement('button');edit.id='editAssociationAction';edit.type='button';edit.className='btn';edit.textContent='تعديل الجمعية';edit.onclick=openAssociationEditor;
-    const del=document.createElement('button');del.id='deleteAssociationAction';del.type='button';del.className='btn red';del.textContent='حذف الجمعية';del.onclick=deleteAssociation;
-    group.append(edit,del);
-  }
   function addMemberDeleteButtons(){
     document.querySelectorAll('.memberCard').forEach(card=>{
       const actions=card.querySelector('.rowActions');if(!actions||actions.querySelector('[data-act="delete"]'))return;
@@ -74,7 +68,7 @@
       setTimeout(()=>{const editor=$('memberEditor');if(editor&&!editor.classList.contains('active'))editor.classList.add('active');$('memberName')?.focus();},0);
     };
   }
-  function enhance(){addAssociationButtons();addMemberDeleteButtons();fixAddMember();}
+  function enhance(){addMemberDeleteButtons();fixAddMember();}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',enhance);else enhance();
   new MutationObserver(enhance).observe(document.documentElement,{subtree:true,childList:true});
   window.__floosyAssociationOpenMember=openMemberEditorSafe;
