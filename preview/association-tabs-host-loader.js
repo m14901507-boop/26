@@ -8,6 +8,7 @@
       if(!doc.getElementById('associationMemberTableV1Script')){const s=doc.createElement('script');s.id='associationMemberTableV1Script';s.src='association-member-table-v1.js?v=3';doc.body.appendChild(s);}
       if(!doc.getElementById('associationPeriodTableFixScript')){const s=doc.createElement('script');s.id='associationPeriodTableFixScript';s.src='association-period-table-fix.js?v=1';doc.body.appendChild(s);}
       if(!doc.getElementById('associationReceiptScheduleV1Script')){const s=doc.createElement('script');s.id='associationReceiptScheduleV1Script';s.src='association-receipt-schedule-v1.js?v=2';doc.body.appendChild(s);}
+      if(!doc.getElementById('associationEmailTemplateV1Script')){const s=doc.createElement('script');s.id='associationEmailTemplateV1Script';s.src='association-email-template-v1.js?v=1';doc.body.appendChild(s);}
     }catch(e){}};
     frame.addEventListener('load',()=>setTimeout(add,80));setTimeout(add,120);return true;
   }
