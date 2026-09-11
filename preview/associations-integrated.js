@@ -15,7 +15,7 @@
 
   const host=document.createElement('div');host.className='association-hostbar';host.id='associationHostBar';host.innerHTML=`
     <div class="assoc-host-cell"><span>الجمعية</span><select id="hostAssocSelect" class="assoc-host-select"><option value="">—</option></select></div>
-    <div class="assoc-host-cell"><span>عدد الأعضاء</span><b id="hostAssocMembers">—</b></div>
+    <div class="assoc-host-cell"><span>عدد الأعضاء الفعلي</span><b id="hostAssocMembers">—</b></div>
     <div class="assoc-host-cell"><span>مبلغ المساهمة / عضو</span><b id="hostAssocContribution">—</b></div>
     <div class="assoc-host-cell"><span>مدة الجمعية</span><b id="hostAssocDuration">—</b></div>
     <div class="assoc-host-cell"><span>تاريخ البدء</span><b id="hostAssocStart">—</b></div>
@@ -39,11 +39,19 @@
       const doc=frame?.contentDocument;if(!doc)return;
       const childSel=doc.getElementById('associationSelect'),hostSel=document.getElementById('hostAssocSelect');if(!hostSel)return;
       if(childSel){hostSel.innerHTML=[...childSel.options].map(o=>`<option value="${String(o.value).replace(/"/g,'&quot;')}">${o.textContent||'—'}</option>`).join('');hostSel.value=childSel.value||'';}
-      const actual=doc.querySelectorAll('#assocMemberTableBody tr[data-member-id],.memberCard').length;
-      const planned=Number(doc.getElementById('associationPlannedMembers')?.value||0)||actual;
+      const selectedId=String(childSel?.value||'');
+      let actual=0;
+      try{
+        const d=frame?.contentWindow?.DATA;
+        if(d&&Array.isArray(d.members))actual=d.members.filter(m=>String(m?.associationId||'')===selectedId&&m?.active!==false).length;
+      }catch(e){}
+      if(!actual){
+        const tableRows=doc.querySelectorAll('#assocMemberTableBody tr[data-member-id]');
+        actual=tableRows.length||doc.querySelectorAll('.memberCard').length;
+      }
       const contribution=doc.getElementById('contributionAmount')?.value,duration=doc.getElementById('durationMonths')?.value,start=doc.getElementById('startMonth')?.value,end=doc.getElementById('associationEndDate')?.value,cycle=doc.getElementById('payoutEveryMonths')?.value;
       const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v||'—';};
-      set('hostAssocMembers',planned?`${planned} أعضاء`:'—');set('hostAssocContribution',contribution?money(contribution):'—');set('hostAssocDuration',duration?`${duration} شهر`:'—');set('hostAssocStart',fmtDate(start));set('hostAssocEnd',fmtDate(end));set('hostAssocCycle',cycle?`كل دور ${cycle} أشهر`:'—');
+      set('hostAssocMembers',actual===1?'1 عضو':`${actual} أعضاء`);set('hostAssocContribution',contribution?money(contribution):'—');set('hostAssocDuration',duration?`${duration} شهر`:'—');set('hostAssocStart',fmtDate(start));set('hostAssocEnd',fmtDate(end));set('hostAssocCycle',cycle?`كل دور ${cycle} أشهر`:'—');
     }catch(e){}
   }
   function assocMode(on){host.classList.toggle('active',on);if(genericFilter)genericFilter.style.display=on?'none':'';if(on)setTimeout(syncHost,100);}
