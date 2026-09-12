@@ -62,15 +62,37 @@
     const ai=accountInfo(String(bankRaw||''));return{key:ai.key,bank:ai.bank,number:ai.number,label:ai.label};
   }
 
+  function operationScore(x){
+    let score=0;
+    if(x.item)score+=4;
+    if(x.classification)score+=3;
+    if(x.sourceBudget)score+=3;
+    if(x.movement)score+=2;
+    if(Number.isFinite(x.amount))score+=2;
+    if(x.desc)score+=1;
+    if(x.accountKey||x.bankName)score+=1;
+    return score;
+  }
+
   allOps=function(){
     const rows=Array.isArray(DATA.operations)?DATA.operations:[];if(!rows.length)return [];
     const ix=columnMap();
-    return rows.filter(r=>Array.isArray(r)&&r.some(v=>String(v??'').trim()!=='' )).map(r=>{
+    const mapped=rows.filter(r=>Array.isArray(r)&&r.some(v=>String(v??'').trim()!=='' )).map(r=>{
       const rawDate=r[ix.date],d=parseDate(rawDate),monthKey=operationMonth(rawDate);
       const item=String(r[ix.item]??'').trim(),classification=String(r[ix.classification]??'').trim(),amount=amountValue(r[ix.amount]),desc=String(r[ix.desc]??'').trim(),movement=String(r[ix.movement]??'').trim(),bankRaw=String(r[ix.bank]??'').trim(),accountKeyRaw=String(r[ix.accountKey]??'').trim(),sourceBudget=String(r[ix.sourceBudget]??'').trim();
       const ai=accountFromKey(accountKeyRaw,bankRaw),budget=budgetName(sourceBudget||classification)||'غير مصنف';
       return{r,d,monthKey,item,account:bankRaw,accountKey:ai.key,bankName:ai.bank,accountNo:ai.number,accountLabel:ai.label,movement,amount,desc,budget,sourceBudget,classification,messageId:String(r[ix.id]??'').trim()};
     });
+
+    // One Gmail message must appear only once in the preview dashboard.
+    // If historical duplicate rows exist, keep the most complete/classified row.
+    const byMessage=new Map(),withoutMessage=[];
+    for(const x of mapped){
+      if(!x.messageId){withoutMessage.push(x);continue;}
+      const old=byMessage.get(x.messageId);
+      if(!old||operationScore(x)>=operationScore(old))byMessage.set(x.messageId,x);
+    }
+    return [...byMessage.values(),...withoutMessage];
   };
 
   const isInternal=x=>/تحويل\s*داخلي|تحويلات\s*داخلية|internal\s*transfer/i.test([x.movement,x.classification,x.sourceBudget].join(' '));
