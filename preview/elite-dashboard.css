@@ -261,3 +261,34 @@ body.floosy-elite .page .table th{background:var(--elite-forest)!important;color
 @media(max-width:640px){
   body.floosy-elite .page .kpis{grid-template-columns:1fr!important}
 }
+
+/* Budget editor and form surfaces */
+body.floosy-elite .budget-editor{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(150px,1fr))!important;
+  gap:9px!important;
+}
+body.floosy-elite .budget-edit-card{
+  padding:10px!important;
+  border-radius:13px!important;
+  background:linear-gradient(145deg,rgba(239,249,235,.96),rgba(225,244,240,.94))!important;
+  border:1px solid rgba(31,90,67,.18)!important;
+  box-shadow:0 7px 17px rgba(31,90,67,.08)!important;
+}
+body.floosy-elite .budget-edit-card label{
+  color:#42705f!important;
+  font-size:9px!important;
+  margin-bottom:5px!important;
+}
+body.floosy-elite .budget-edit-card .control{
+  min-height:35px!important;
+  background:#fffefa!important;
+  color:var(--elite-ink)!important;
+  border-color:rgba(31,90,67,.20)!important;
+}
+@media(max-width:980px){
+  body.floosy-elite .budget-editor{grid-template-columns:repeat(2,minmax(150px,1fr))!important}
+}
+@media(max-width:640px){
+  body.floosy-elite .budget-editor{grid-template-columns:1fr!important}
+}
