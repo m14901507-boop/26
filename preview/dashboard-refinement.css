@@ -1,46 +1,132 @@
-/* Dashboard refinement — preview only */
+/* FLOOSY preview — strong visual redesign */
 :root{
-  --preview-surface:#111b27;
-  --preview-surface-2:#0b121b;
-  --preview-border:rgba(148,163,184,.22);
-  --preview-shadow:0 18px 42px rgba(0,0,0,.28);
+  --bg:#070b14!important;
+  --card:#0d1624!important;
+  --card-2:#111d2f!important;
+  --line:rgba(94,142,196,.28)!important;
+  --text:#f7fbff!important;
+  --muted:#91a5bd!important;
+  --blue:#3da7ff!important;
+  --cyan:#39e6ff!important;
+  --green:#39e59a!important;
+  --gold:#ffc83d!important;
+  --red:#ff5570!important;
 }
-.page{max-width:1480px;margin-inline:auto}
-#dashboard .kpis,#accounts .kpis{
-  display:grid!important;
-  grid-template-columns:repeat(4,minmax(0,1fr))!important;
-  gap:12px!important;
+html,body{background:#070b14!important;color:var(--text)!important}
+body{
+  background:
+    radial-gradient(circle at 82% 8%,rgba(61,167,255,.24),transparent 28%),
+    radial-gradient(circle at 12% 28%,rgba(57,230,255,.12),transparent 25%),
+    radial-gradient(circle at 75% 95%,rgba(57,229,154,.10),transparent 28%),
+    linear-gradient(135deg,#050810,#0a1220 52%,#050810)!important;
+  background-attachment:fixed!important;
 }
-#dashboard .metric,#accounts .metric{
-  min-width:0;
-  border-radius:18px!important;
-  padding:16px!important;
+body:before,body:after{
+  content:"";position:fixed;z-index:-1;pointer-events:none;border-radius:50%;
+  filter:blur(4px);opacity:.8;
 }
-.metric label{color:#aab8c8!important}
-.metric strong{font-variant-numeric:tabular-nums;letter-spacing:-.4px}
+body:before{width:260px;height:260px;top:18%;right:28%;background:radial-gradient(circle,rgba(57,230,255,.13),transparent 68%);animation:orbA 9s ease-in-out infinite alternate}
+body:after{width:220px;height:220px;bottom:12%;left:20%;background:radial-gradient(circle,rgba(255,200,61,.10),transparent 68%);animation:orbB 11s ease-in-out infinite alternate}
+.app:before{opacity:.18!important;background-size:56px 56px!important}
+.sidebar{
+  background:linear-gradient(180deg,rgba(8,17,31,.98),rgba(4,8,15,.98))!important;
+  border-left:1px solid rgba(57,230,255,.35)!important;
+}
+.brand{padding-bottom:20px!important}
+.logo{
+  background:linear-gradient(135deg,#fff3a3,#ffc83d 45%,#ff7a18)!important;
+  box-shadow:0 0 0 1px rgba(255,200,61,.75),0 0 34px rgba(255,200,61,.32)!important;
+}
+.nav{gap:10px!important}
+.nav-btn{
+  min-height:48px!important;border-radius:13px!important;
+  background:rgba(15,29,47,.78)!important;border:1px solid rgba(94,142,196,.25)!important;
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease!important;
+}
+.nav-btn:hover{transform:translateX(-6px)!important;border-color:var(--cyan)!important;box-shadow:0 0 24px rgba(57,230,255,.18)!important}
+.nav-btn.active{
+  background:linear-gradient(100deg,#0b78c8,#114a8f)!important;
+  border-color:var(--cyan)!important;
+  box-shadow:inset 4px 0 var(--gold),0 0 28px rgba(61,167,255,.30)!important;
+}
+.topbar{
+  background:rgba(5,12,23,.78)!important;border:1px solid rgba(94,142,196,.3)!important;
+  box-shadow:0 12px 38px rgba(0,0,0,.32),0 0 22px rgba(61,167,255,.07)!important;
+}
+.headline h1{font-size:26px!important;text-shadow:0 0 24px rgba(57,230,255,.28)!important}
+.page{max-width:1420px!important;gap:20px!important}
 .filterbar{
-  display:grid!important;
-  grid-template-columns:minmax(220px,1.6fr) repeat(3,minmax(130px,1fr)) auto!important;
-  align-items:end!important;
+  position:relative;display:grid!important;grid-template-columns:minmax(230px,1.7fr) repeat(3,minmax(135px,1fr)) auto!important;
+  padding:16px!important;border-radius:18px!important;overflow:hidden;
+  background:linear-gradient(120deg,rgba(13,29,48,.96),rgba(10,19,33,.90))!important;
+  border:1px solid rgba(57,230,255,.34)!important;
+  box-shadow:0 16px 44px rgba(0,0,0,.28),0 0 30px rgba(57,230,255,.07)!important;
 }
-.filterbar label{display:flex;flex-direction:column;gap:6px;color:#9fb0c4;font-size:10px;font-weight:700}
-.filterbar .control{width:100%;min-height:42px;box-sizing:border-box}
-.filterbar .btn{min-height:42px;white-space:nowrap}
-.panel{border-radius:20px!important}
-.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.table-wrap{overflow:auto;border:1px solid var(--preview-border);border-radius:14px}
+.filterbar:after{
+  content:"";position:absolute;left:-10%;right:-10%;top:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan),var(--blue),var(--gold),transparent);
+  animation:scan 4s linear infinite;
+}
+.filterbar label{color:#c3d5e8!important;font-size:10px!important}
+.control,.edit-select,.btn{
+  min-height:42px!important;border-radius:11px!important;
+  background:#0a1422!important;border:1px solid rgba(131,176,220,.30)!important;
+}
+.control:focus,.edit-select:focus{border-color:var(--cyan)!important;box-shadow:0 0 0 3px rgba(57,230,255,.16),0 0 22px rgba(57,230,255,.18)!important}
+.btn.primary{
+  background:linear-gradient(135deg,#22b7ff,#1267e8 60%,#1746b3)!important;
+  border-color:#6bdcff!important;box-shadow:0 0 22px rgba(34,183,255,.28)!important;
+}
+.btn.primary:hover{transform:translateY(-3px)!important;box-shadow:0 0 32px rgba(34,183,255,.48)!important}
+#dashboard .kpis,#accounts .kpis{
+  display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:14px!important;
+}
+.metric{
+  min-height:118px!important;padding:18px!important;border-radius:19px!important;
+  background:linear-gradient(145deg,rgba(18,34,55,.97),rgba(9,17,29,.97))!important;
+  border:1px solid rgba(94,142,196,.32)!important;
+  box-shadow:0 15px 35px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.05)!important;
+  transition:transform .24s ease,box-shadow .24s ease,border-color .24s ease!important;
+  animation:rise .55s both;
+}
+.metric:nth-child(2){animation-delay:.06s}.metric:nth-child(3){animation-delay:.12s}.metric:nth-child(4){animation-delay:.18s}
+.metric:hover{transform:translateY(-7px) scale(1.015)!important;border-color:var(--cyan)!important;box-shadow:0 20px 42px rgba(0,0,0,.4),0 0 26px rgba(57,230,255,.14)!important}
+.metric label{color:#a8bdd2!important;font-size:11px!important}
+.metric strong{font-size:28px!important;font-variant-numeric:tabular-nums!important;text-shadow:0 0 16px currentColor}
+.panel{
+  border-radius:20px!important;background:linear-gradient(145deg,rgba(15,29,47,.96),rgba(8,15,26,.96))!important;
+  border:1px solid rgba(94,142,196,.28)!important;box-shadow:0 18px 44px rgba(0,0,0,.30)!important;
+}
+.panel h2{font-size:17px!important;color:#f1f8ff!important}
+.panel h2:after{height:4px!important;width:48px!important;background:linear-gradient(90deg,var(--cyan),var(--blue),var(--gold))!important}
+#focusHero{gap:16px!important}
+.focus-card{
+  background:linear-gradient(145deg,rgba(16,36,60,.98),rgba(7,15,27,.98))!important;
+  border:1px solid rgba(57,230,255,.30)!important;box-shadow:0 20px 50px rgba(0,0,0,.38),0 0 28px rgba(57,230,255,.06)!important;
+}
+.focus-title{font-size:27px!important;text-shadow:0 0 20px rgba(57,230,255,.18)!important}
+.focus-stat{background:rgba(255,255,255,.035)!important;border-color:rgba(131,176,220,.22)!important}
+#focusBalanceGrid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px!important}
+.focus-balance-card{
+  min-height:108px!important;border-radius:17px!important;
+  background:linear-gradient(145deg,#10263a,#091421)!important;
+  border:1px solid rgba(57,229,154,.35)!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.04)!important;
+}
+.focus-balance-card:hover{transform:translateY(-6px)!important;border-color:var(--green)!important;box-shadow:0 18px 36px rgba(57,229,154,.15)!important}
+.focus-balance-card .value{font-size:23px!important;color:#6af0b5!important;text-shadow:0 0 17px rgba(57,229,154,.28)}
+.table-wrap{overflow:auto!important;border:1px solid rgba(94,142,196,.28)!important;border-radius:15px!important}
 .table{min-width:760px!important;border-collapse:separate!important;border-spacing:0!important}
-.table th{position:sticky;top:0;z-index:2;border-bottom:1px solid rgba(255,255,255,.12)!important}
-.table td{border-bottom:1px solid rgba(255,255,255,.055)!important;vertical-align:middle}
-.table tbody tr:last-child td{border-bottom:0!important}
-.table td:first-child,.table th:first-child{padding-right:14px!important}
-.table td:last-child,.table th:last-child{padding-left:14px!important}
-.badge,.status,.pill{border-radius:999px!important;padding:.35em .7em!important;font-size:10px!important}
-.focus-balance-card .value,.focus-stat b,.metric strong{font-variant-numeric:tabular-nums}
-#focusBalanceGrid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
-#focusBalanceGrid .focus-balance-card{min-width:0}
-.sync{display:flex!important;justify-content:space-between!important;gap:12px!important;flex-wrap:wrap!important}
-.sync .btn{min-height:38px}
+.table th{background:#0b1a2b!important;color:#cfe5fa!important;position:sticky;top:0;z-index:2}
+.table td{border-bottom:1px solid rgba(131,176,220,.10)!important}
+.table tbody tr{transition:background .18s ease,transform .18s ease!important}
+.table tbody tr:hover{background:linear-gradient(90deg,rgba(57,230,255,.11),rgba(61,167,255,.04))!important}
+.sync{background:linear-gradient(100deg,#0d2742,#122336,#171e26)!important;border:1px solid rgba(57,230,255,.32)!important}
+.badge,.status,.pill{border-radius:999px!important}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scan{0%{transform:translateX(-40%);opacity:.25}50%{opacity:1}100%{transform:translateX(40%);opacity:.25}}
+@keyframes orbA{from{transform:translate3d(0,0,0) scale(.9)}to{transform:translate3d(-45px,28px,0) scale(1.12)}}
+@keyframes orbB{from{transform:translate3d(0,0,0)}to{transform:translate3d(55px,-35px,0)}}
 @media(max-width:1180px){
   #dashboard .kpis,#accounts .kpis,#focusBalanceGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   .filterbar{grid-template-columns:repeat(2,minmax(0,1fr))!important}
@@ -49,6 +135,6 @@
 @media(max-width:640px){
   #dashboard .kpis,#accounts .kpis,#focusBalanceGrid,.filterbar{grid-template-columns:1fr!important}
   .filterbar label:first-child{grid-column:auto}
-  .panel{padding:13px!important}
-  .table{min-width:680px!important}
+  .focus-title{font-size:22px!important}
 }
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
