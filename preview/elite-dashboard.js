@@ -43,7 +43,7 @@
 
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = 'elite-dashboard.css?v=2';
+  link.href = 'elite-dashboard.css?v=3';
   document.head.appendChild(link);
 
   applyStructure();
