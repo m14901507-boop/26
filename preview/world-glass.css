@@ -133,3 +133,19 @@ body .app .main :is(.topbar,.sync,.filterbar,.panel,.metric,.login,.budget-edit-
   color:#f6f9ff!important;
 }
 body .app .sidebar{background:linear-gradient(180deg,rgba(10,19,38,.91),rgba(5,10,22,.84))!important;border-left-color:rgba(138,214,255,.20)!important}
+
+html body.floosy-elite .app .main :is(.topbar,.sync,.filterbar,.panel,.metric,.login,.budget-edit-card,.focus-card,.focus-balance-card,.insight,.embedded-shell){
+  background-color:rgba(9,17,34,.66)!important;
+  background-image:linear-gradient(145deg,rgba(31,49,84,.64),rgba(7,14,29,.56))!important;
+  border-color:rgba(255,255,255,.16)!important;
+  color:#f6f9ff!important;
+}
+html body.floosy-elite .app .main :is(.control,.edit-select,input,select,textarea){
+  background-color:rgba(5,11,24,.66)!important;
+  background-image:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.035))!important;
+  border-color:rgba(255,255,255,.15)!important;
+  color:#f5f9ff!important;
+}
+html body.floosy-elite .app .main :is(.focus-stat,.chartbox,.track,.table-wrap){background-color:rgba(3,9,20,.46)!important;background-image:none!important;border-color:rgba(255,255,255,.10)!important;color:#edf6ff!important}
+html body.floosy-elite .app .main :is(.headline h1,.headline p,.panel h2,.panel p,.filterbar label,.focus-title,.focus-copy,.focus-stat span,.focus-stat b,.metric label,.metric strong,.metric small){color:inherit!important}
+html body.floosy-elite .app .main .headline p,html body.floosy-elite .app .main .panel p,html body.floosy-elite .app .main .filterbar label,html body.floosy-elite .app .main .metric label,html body.floosy-elite .app .main .metric small{color:#a4b5ca!important}
