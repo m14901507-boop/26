@@ -117,3 +117,20 @@ select option{background:#0b1426!important;color:#fff!important}.sync{background
 @media(max-width:980px){.main{padding:12px!important}.topbar,.filterbar,.panel{border-radius:17px!important}.water-orb:nth-child(1){width:70vw;height:70vw}.water-orb:nth-child(2){width:60vw;height:60vw}}
 @media(max-width:640px){.main{padding:9px!important}.panel:hover,.metric:hover,.focus-balance-card:hover{transform:none!important}.topbar:after,.sync:after,.filterbar:after,.panel:after,.metric:after{animation-duration:13s!important}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important}.panel:hover,.metric:hover,.focus-balance-card:hover{transform:none!important}.floosy-waterfield{display:none!important}}
+
+/* Final cascade lock: the preview loads a few legacy themes dynamically. */
+html body{
+  background-color:#030711!important;
+  background-image:
+    radial-gradient(circle at var(--mx) var(--my),rgba(82,186,255,.22),transparent 24%),
+    radial-gradient(circle at 14% 18%,rgba(155,124,255,.18),transparent 27%),
+    radial-gradient(circle at 60% 86%,rgba(85,244,230,.13),transparent 26%),
+    linear-gradient(145deg,#02040b 0%,#071225 40%,#050916 72%,#02040a 100%)!important;
+}
+body .app .main :is(.topbar,.sync,.filterbar,.panel,.metric,.login,.budget-edit-card,.focus-card,.focus-balance-card,.insight,.embedded-shell){
+  background-color:rgba(9,17,34,.62)!important;
+  background-image:linear-gradient(145deg,rgba(31,49,84,.62),rgba(7,14,29,.52))!important;
+  border-color:rgba(255,255,255,.15)!important;
+  color:#f6f9ff!important;
+}
+body .app .sidebar{background:linear-gradient(180deg,rgba(10,19,38,.91),rgba(5,10,22,.84))!important;border-left-color:rgba(138,214,255,.20)!important}
