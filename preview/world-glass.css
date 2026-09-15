@@ -272,3 +272,24 @@ html body.floosy-elite .app .main .table .description{color:#9fb1c7!important}
   html body.floosy-elite .app .main .page .metric strong{font-size:15px!important}
   html body.floosy-elite .app .sidebar .nav-btn{min-width:104px!important;padding:0 10px!important}
 }
+
+/* Confirmed balance selector */
+html body.floosy-elite .app .main .filtered-balance-kpi{display:none!important}
+html body.floosy-elite .app .main #focusBalanceHead{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(230px,310px) auto!important;align-items:end!important;gap:10px!important;padding:2px 3px!important}
+html body.floosy-elite .app .main .confirmed-balance-tools{display:grid!important;grid-template-columns:auto minmax(170px,1fr)!important;align-items:center!important;gap:8px!important;min-width:0!important}
+html body.floosy-elite .app .main .confirmed-balance-tools label{font-size:9px!important;font-weight:700!important;color:#9fb2c9!important;white-space:nowrap!important}
+html body.floosy-elite .app .main #confirmedBalanceFilter{min-height:38px!important;width:100%!important;color:#f4f8ff!important;background:#071328!important;border:1px solid rgba(102,197,255,.28)!important;box-shadow:inset 0 1px rgba(255,255,255,.06),0 8px 22px rgba(0,0,0,.16)!important}
+html body.floosy-elite .app .main #confirmedBalanceFilter:focus{border-color:#55cfff!important;box-shadow:0 0 0 3px rgba(80,184,255,.14)!important}
+html body.floosy-elite .app .main .focus-balance-empty{grid-column:1/-1!important;min-height:112px!important;display:grid!important;place-items:center!important;align-content:center!important;gap:5px!important;text-align:center!important;border:1px dashed rgba(103,194,255,.25)!important;border-radius:15px!important;background:linear-gradient(145deg,rgba(17,35,61,.56),rgba(6,15,30,.66))!important;color:#eef7ff!important}
+html body.floosy-elite .app .main .focus-balance-empty span{width:32px;height:32px;display:grid;place-items:center;border-radius:50%;color:#65d9ff;background:rgba(80,184,255,.10);box-shadow:0 0 22px rgba(80,184,255,.12)}
+html body.floosy-elite .app .main .focus-balance-empty b{font-size:13px!important}.focus-balance-empty small{color:#8fa3bb!important;font-size:9px!important}
+html body.floosy-elite .app .main .balance-card-head{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:8px!important}
+html body.floosy-elite .app .main .balance-status{flex:0 0 auto;padding:3px 7px;border-radius:999px;font-size:8px;font-weight:800;color:#63edbd;background:rgba(77,227,162,.10);border:1px solid rgba(77,227,162,.25)}
+html body.floosy-elite .app .main .focus-balance-card.missing .balance-status{color:#ffe08c;background:rgba(255,213,106,.09);border-color:rgba(255,213,106,.24)}
+html body.floosy-elite .app .main .focus-balance-card.confirmed{border-color:rgba(77,227,162,.28)!important}
+@media(max-width:700px){
+  html body.floosy-elite .app .main #focusBalanceHead{grid-template-columns:1fr!important;align-items:stretch!important;gap:7px!important}
+  html body.floosy-elite .app .main .confirmed-balance-tools{grid-template-columns:1fr!important;gap:5px!important}
+  html body.floosy-elite .app .main #focusBalanceHead .floosy-last-refresh{justify-self:start!important}
+  html body.floosy-elite .app .main .focus-balance-empty{min-height:96px!important;padding:12px!important}
+}
