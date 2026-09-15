@@ -41,10 +41,12 @@
     });
   };
 
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = 'elite-dashboard.css?v=3';
-  document.head.appendChild(link);
+  if (!document.querySelector('link[href*="elite-dashboard.css"]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'elite-dashboard.css?v=3';
+    document.head.appendChild(link);
+  }
 
   applyStructure();
   window.addEventListener('load', applyStructure);
