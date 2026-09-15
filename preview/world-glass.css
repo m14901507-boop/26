@@ -120,9 +120,8 @@ select option{background:#0b1426!important;color:#fff!important}.sync{background
 
 /* Final cascade lock: the preview loads a few legacy themes dynamically. */
 html body{
-  background-color:#030711!important;
-  background-image:
-    radial-gradient(circle at var(--mx) var(--my),rgba(82,186,255,.22),transparent 24%),
+  background:
+    radial-gradient(circle at 76% 12%,rgba(82,186,255,.22),transparent 24%),
     radial-gradient(circle at 14% 18%,rgba(155,124,255,.18),transparent 27%),
     radial-gradient(circle at 60% 86%,rgba(85,244,230,.13),transparent 26%),
     linear-gradient(145deg,#02040b 0%,#071225 40%,#050916 72%,#02040a 100%)!important;
