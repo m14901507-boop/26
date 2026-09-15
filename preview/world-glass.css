@@ -165,6 +165,19 @@ html body.floosy-elite .app .main .page .metric{
   box-shadow:0 10px 26px rgba(0,0,0,.20),inset 0 1px rgba(255,255,255,.08)!important;
   backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
 }
+html body.floosy-elite .app .main :is(#dashboard,#budgets,#transactions,#accounts,#items,#alerts) .metric{
+  background-color:rgba(8,17,34,.88)!important;
+  background-image:linear-gradient(145deg,rgba(25,41,71,.82),rgba(8,17,34,.86))!important;
+  border-color:rgba(145,208,255,.14)!important;
+  color:#f6f9ff!important;
+  box-shadow:0 10px 26px rgba(0,0,0,.20),inset 0 1px rgba(255,255,255,.08)!important;
+}
+html body.floosy-elite .app .main :is(#dashboard,#budgets,#transactions,#accounts,#items,#alerts) .metric label{color:#9db0c8!important}
+html body.floosy-elite .app .main :is(#dashboard,#budgets,#transactions,#accounts,#items,#alerts) .metric strong{color:#f6f9ff!important;text-shadow:none!important}
+html body.floosy-elite .app .main :is(#dashboard,#budgets,#transactions,#accounts,#items,#alerts) .metric small{color:#879bb5!important}
+html body.floosy-elite .app .main :is(#dashboard,#budgets,#transactions,#accounts,#items,#alerts) .metric.green strong{color:#70f2b7!important}
+html body.floosy-elite .app .main :is(#dashboard,#budgets,#transactions,#accounts,#items,#alerts) .metric.red strong{color:#ff8da5!important}
+html body.floosy-elite .app .main :is(#dashboard,#budgets,#transactions,#accounts,#items,#alerts) .metric.gold strong{color:#ffe49a!important}
 html body.floosy-elite .app .main .page .metric label{font-size:10px!important;line-height:1.35!important;color:#9db0c8!important}
 html body.floosy-elite .app .main .page .metric strong{font-size:18px!important;line-height:1.25!important;color:#f6f9ff!important;margin-top:5px!important}
 html body.floosy-elite .app .main .page .metric small{font-size:8px!important;line-height:1.35!important;color:#879bb5!important;margin-top:4px!important}
