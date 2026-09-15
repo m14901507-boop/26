@@ -1,0 +1,117 @@
+/* FLOOSY — World Glass Preview System */
+:root{
+  --glass-bg:rgba(11,18,35,.58)!important;
+  --glass-bg-strong:rgba(13,22,43,.78)!important;
+  --glass-edge:rgba(255,255,255,.15)!important;
+  --glass-edge-hot:rgba(99,210,255,.48)!important;
+  --glass-text:#f6f9ff!important;
+  --glass-muted:#9fb0c8!important;
+  --glass-blue:#50b8ff!important;
+  --glass-cyan:#55f4e6!important;
+  --glass-violet:#9b7cff!important;
+  --glass-gold:#ffd56a!important;
+  --glass-green:#4de3a2!important;
+  --glass-red:#ff6f8d!important;
+  --glass-shadow:0 24px 70px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.13),inset 0 -1px 0 rgba(255,255,255,.025)!important;
+  color-scheme:dark;
+}
+html,body{background:#030711!important;color:var(--glass-text)!important}
+body{
+  background:
+    radial-gradient(circle at var(--mx,76%) var(--my,12%),rgba(82,186,255,.22),transparent 24%),
+    radial-gradient(circle at 14% 18%,rgba(155,124,255,.18),transparent 27%),
+    radial-gradient(circle at 60% 86%,rgba(85,244,230,.13),transparent 26%),
+    linear-gradient(145deg,#02040b 0%,#071225 40%,#050916 72%,#02040a 100%)!important;
+  background-attachment:fixed!important;
+  overflow-x:hidden;
+}
+body:before{
+  content:""!important;position:fixed!important;inset:-22%!important;width:auto!important;height:auto!important;z-index:-3!important;
+  border-radius:0!important;clip-path:none!important;opacity:.95!important;filter:blur(42px)!important;
+  background:
+    radial-gradient(ellipse at 72% 15%,rgba(38,148,255,.34),transparent 28%),
+    radial-gradient(ellipse at 20% 30%,rgba(133,79,255,.24),transparent 26%),
+    radial-gradient(ellipse at 54% 80%,rgba(0,230,206,.18),transparent 28%)!important;
+  animation:glassAurora 16s ease-in-out infinite alternate!important;
+}
+body:after{
+  content:""!important;position:fixed!important;inset:0!important;height:auto!important;z-index:-2!important;
+  clip-path:none!important;opacity:.26!important;filter:none!important;border-radius:0!important;
+  background-image:
+    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px),
+    radial-gradient(circle at 50% 50%,transparent 0 45%,rgba(0,0,0,.52) 100%)!important;
+  background-size:52px 52px,52px 52px,100% 100%!important;
+}
+.floosy-waterfield{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;opacity:.82}
+.floosy-waterfield:before,.floosy-waterfield:after{
+  content:"";position:absolute;left:-15%;width:130%;height:38%;border-radius:50%;
+  border:1px solid rgba(89,220,255,.14);box-shadow:0 0 90px rgba(42,178,255,.09),inset 0 0 110px rgba(86,130,255,.08);
+  filter:blur(.2px);transform-origin:center;
+}
+.floosy-waterfield:before{bottom:-20%;animation:waterOrbit 13s ease-in-out infinite alternate}
+.floosy-waterfield:after{bottom:-13%;animation:waterOrbitTwo 17s ease-in-out infinite alternate-reverse}
+.water-orb{position:absolute;border-radius:50%;filter:blur(10px);mix-blend-mode:screen;will-change:transform}
+.water-orb:nth-child(1){width:36vw;height:36vw;right:-8vw;top:4vh;background:radial-gradient(circle at 35% 35%,rgba(139,231,255,.27),rgba(25,118,255,.09) 48%,transparent 70%);animation:orbDriftA 12s ease-in-out infinite alternate}
+.water-orb:nth-child(2){width:30vw;height:30vw;left:2vw;bottom:-8vw;background:radial-gradient(circle at 45% 40%,rgba(116,98,255,.24),rgba(26,226,205,.08) 52%,transparent 72%);animation:orbDriftB 15s ease-in-out infinite alternate}
+.water-orb:nth-child(3){width:22vw;height:22vw;left:36vw;top:38vh;background:radial-gradient(circle,rgba(89,231,255,.12),transparent 68%);animation:orbPulse 8s ease-in-out infinite}
+.app{position:relative;isolation:isolate;background:transparent!important}
+.app:before{content:""!important;position:fixed!important;inset:0!important;z-index:-1!important;pointer-events:none!important;background:linear-gradient(112deg,rgba(255,255,255,.022),transparent 28%,rgba(90,190,255,.035) 54%,transparent 76%)!important;animation:ambientSweep 11s ease-in-out infinite!important}
+.sidebar{
+  background:linear-gradient(180deg,rgba(10,19,38,.88),rgba(5,10,22,.76))!important;
+  border-left:1px solid rgba(138,214,255,.2)!important;
+  box-shadow:-26px 0 80px rgba(0,0,0,.38),inset 1px 0 rgba(255,255,255,.08)!important;
+  backdrop-filter:blur(28px) saturate(165%)!important;-webkit-backdrop-filter:blur(28px) saturate(165%)!important;
+}
+.brand{border-bottom-color:rgba(255,255,255,.09)!important}.brand h2{letter-spacing:.06em;text-shadow:0 0 28px rgba(80,184,255,.3)}.brand small{color:#91a7c3!important}
+.logo{background:linear-gradient(145deg,rgba(255,255,255,.95),#ffd56a 35%,#bf7c16 74%,#68400b)!important;color:#071021!important;border:1px solid rgba(255,255,255,.55)!important;box-shadow:0 0 30px rgba(255,202,77,.28),0 18px 42px rgba(0,0,0,.45),inset 0 2px 4px rgba(255,255,255,.72)!important}
+.nav{gap:9px!important}.nav-btn{
+  position:relative!important;overflow:hidden!important;color:#dce8f8!important;
+  background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.025))!important;
+  border:1px solid rgba(255,255,255,.105)!important;border-radius:15px!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.07),0 10px 26px rgba(0,0,0,.12)!important;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1),border-color .3s,background .3s,box-shadow .3s!important;
+}
+.nav-btn:before{content:""!important;position:absolute!important;inset:-50%!important;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.22) 49%,transparent 58%)!important;transform:translateX(70%) rotate(8deg)!important;transition:transform .7s ease!important}
+.nav-btn:hover:before{transform:translateX(-70%) rotate(8deg)!important}.nav-btn:hover{transform:translateX(-5px) scale(1.015)!important;border-color:rgba(80,184,255,.48)!important;background:rgba(80,184,255,.10)!important;box-shadow:0 0 30px rgba(80,184,255,.12),inset 0 1px rgba(255,255,255,.12)!important}
+.nav-btn.active{color:#fff!important;background:linear-gradient(135deg,rgba(47,149,255,.56),rgba(104,76,255,.30))!important;border-color:rgba(115,213,255,.72)!important;box-shadow:inset 4px 0 #ffd56a,0 0 34px rgba(50,160,255,.25),inset 0 1px rgba(255,255,255,.28)!important}
+.main{padding:18px 22px 34px!important}.topbar,.sync,.filterbar,.panel,.metric,.login,.budget-edit-card,.focus-card,.focus-balance-card,.insight,.embedded-shell{
+  color:var(--glass-text)!important;background:linear-gradient(145deg,rgba(24,38,68,.64),rgba(8,15,31,.48))!important;
+  border:1px solid var(--glass-edge)!important;box-shadow:var(--glass-shadow)!important;
+  backdrop-filter:blur(24px) saturate(165%)!important;-webkit-backdrop-filter:blur(24px) saturate(165%)!important;
+}
+.topbar,.sync,.filterbar,.panel,.metric,.login,.focus-card,.focus-balance-card{position:relative!important;overflow:hidden!important}
+.topbar:before,.sync:before,.filterbar:before,.panel:before,.metric:before,.login:before,.focus-card:before,.focus-balance-card:before{
+  content:""!important;position:absolute!important;inset:-2px!important;z-index:0!important;pointer-events:none!important;
+  background:radial-gradient(460px circle at var(--gx,80%) var(--gy,0%),rgba(255,255,255,.17),transparent 42%)!important;opacity:.78!important;
+}
+.topbar:after,.sync:after,.filterbar:after,.panel:after,.metric:after,.login:after,.focus-card:after,.focus-balance-card:after{
+  content:""!important;position:absolute!important;top:-120%!important;left:-28%!important;width:26%!important;height:340%!important;z-index:0!important;pointer-events:none!important;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.13),transparent)!important;transform:rotate(18deg)!important;animation:glassReflection 9s ease-in-out infinite!important;
+}
+.topbar>* ,.sync>* ,.filterbar>* ,.panel>* ,.metric>* ,.login>* ,.focus-card>* ,.focus-balance-card>*{position:relative;z-index:1}
+.topbar{border-radius:22px!important;padding:14px 17px!important}.headline h1,.panel h2,.focus-title{color:#f7fbff!important;text-shadow:0 0 30px rgba(80,184,255,.18)!important}.headline p,.panel p,.focus-copy,.metric label,.metric small,.focus-stat span,.focus-balance-card .bank,.focus-balance-card .account,.focus-balance-card .date{color:var(--glass-muted)!important}
+.btn,.control,.edit-select,input,select,textarea{
+  color:#f5f9ff!important;background:linear-gradient(180deg,rgba(255,255,255,.105),rgba(255,255,255,.045))!important;
+  border:1px solid rgba(255,255,255,.15)!important;box-shadow:inset 0 1px rgba(255,255,255,.10),0 10px 28px rgba(0,0,0,.16)!important;
+  backdrop-filter:blur(12px)!important;transition:transform .25s,border-color .25s,box-shadow .25s,background .25s!important;
+}
+.btn:hover{transform:translateY(-2px)!important;border-color:rgba(90,211,255,.65)!important;box-shadow:0 0 28px rgba(80,184,255,.16),inset 0 1px rgba(255,255,255,.16)!important}.btn:active{transform:translateY(0) scale(.97)!important}
+.btn.primary{background:linear-gradient(135deg,#4ec5ff,#586dff 55%,#9a63ff)!important;border-color:rgba(180,233,255,.7)!important;color:white!important;box-shadow:0 12px 32px rgba(70,130,255,.30),inset 0 1px rgba(255,255,255,.38)!important}
+.control:focus,.edit-select:focus,input:focus,select:focus,textarea:focus{outline:none!important;border-color:#59d7ff!important;box-shadow:0 0 0 3px rgba(80,184,255,.16),0 0 28px rgba(80,184,255,.18)!important}
+select option{background:#0b1426!important;color:#fff!important}.sync{background:linear-gradient(110deg,rgba(15,43,73,.64),rgba(35,25,75,.52),rgba(10,45,51,.55))!important}.filterbar{border-radius:21px!important}.filterbar:after{animation-delay:-4s!important}.filterbar label{color:#9db0c9!important}
+.panel{border-radius:20px!important}.panel,.metric,.focus-balance-card{transition:transform .38s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .35s!important;transform-style:preserve-3d}.panel:hover,.metric:hover,.focus-balance-card:hover{transform:translateY(-6px)!important;border-color:rgba(95,209,255,.45)!important;box-shadow:0 30px 80px rgba(0,0,0,.48),0 0 34px rgba(70,174,255,.11),inset 0 1px rgba(255,255,255,.18)!important}
+#dashboard .kpis,#accounts .kpis{gap:11px!important}.metric{min-height:84px!important;padding:12px 13px!important;border-radius:16px!important}.metric strong{color:#f6f9ff!important;font-size:19px!important;text-shadow:0 0 22px rgba(255,255,255,.12)!important}.metric.green{border-top:1px solid rgba(77,227,162,.72)!important}.metric.green strong{color:#70f2b7!important}.metric.red{border-top:1px solid rgba(255,111,141,.72)!important}.metric.red strong{color:#ff86a0!important}.metric.gold{border-top:1px solid rgba(255,213,106,.78)!important}.metric.gold strong{color:#ffe091!important}
+.panel h2:after{background:linear-gradient(90deg,#55f4e6,#50b8ff,#9b7cff,#ffd56a)!important;box-shadow:0 0 16px rgba(80,184,255,.45)!important}.focus-stat,.behavior-ring:before,.chartbox,.track,.table-wrap{background:rgba(4,10,22,.38)!important;border-color:rgba(255,255,255,.10)!important}.focus-stat b,.focus-balance-card .value,.behavior-score b,.behavior-copy h3{color:#eef7ff!important}.focus-balance-card .value{color:#71f0d4!important;text-shadow:0 0 20px rgba(85,244,230,.22)!important}.behavior-ring{box-shadow:0 0 38px rgba(80,184,255,.20)!important}.behavior-track i,.fill{background:linear-gradient(90deg,#4de3a2,#50b8ff,#9b7cff)!important;box-shadow:0 0 18px rgba(80,184,255,.48)!important}.fill.warn{background:linear-gradient(90deg,#ffad5c,#ffd56a,#fff0a4)!important}.fill.danger{background:linear-gradient(90deg,#ff527b,#ff6f8d,#ff9db1)!important}
+.table-wrap{border-radius:15px!important;background:rgba(2,7,16,.33)!important}.table{color:#dce7f5!important}.table th{background:rgba(7,16,32,.92)!important;color:#a9bdd4!important;border-bottom:1px solid rgba(80,184,255,.34)!important;backdrop-filter:blur(18px)!important}.table td{border-bottom-color:rgba(255,255,255,.065)!important}.table tbody tr:nth-child(even){background:rgba(255,255,255,.018)!important}.table tbody tr:hover{background:linear-gradient(90deg,rgba(80,184,255,.10),rgba(155,124,255,.06))!important}.description{color:#9fb0c8!important}.account-no{color:#ffe091!important}.out{color:#ff86a0!important}.in{color:#70f2b7!important}.insight{color:#eaf3ff!important}.insight.good{border-color:rgba(77,227,162,.36)!important}.insight.warn{border-color:rgba(255,213,106,.38)!important}.insight.danger{border-color:rgba(255,111,141,.38)!important}.footer{color:#8297b3!important;border-top-color:rgba(255,255,255,.08)!important}
+.glass-ripple{position:fixed;border:1px solid rgba(113,225,255,.44);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%) scale(0);box-shadow:0 0 35px rgba(80,184,255,.24),inset 0 0 25px rgba(155,124,255,.14);animation:rippleOut .85s ease-out forwards}
+@keyframes glassAurora{0%{transform:translate3d(-2%,0,0) rotate(-2deg) scale(1)}100%{transform:translate3d(3%,2%,0) rotate(2deg) scale(1.08)}}
+@keyframes ambientSweep{0%,100%{transform:translateX(-5%);opacity:.45}50%{transform:translateX(5%);opacity:.9}}
+@keyframes glassReflection{0%,54%{transform:translateX(-170%) rotate(18deg)}72%,100%{transform:translateX(620%) rotate(18deg)}}
+@keyframes waterOrbit{0%{transform:translate3d(-3%,3%,0) rotate(-2deg) scaleX(1)}100%{transform:translate3d(3%,-4%,0) rotate(3deg) scaleX(1.08)}}
+@keyframes waterOrbitTwo{0%{transform:translate3d(4%,0,0) scaleX(.94)}100%{transform:translate3d(-4%,-6%,0) scaleX(1.06)}}
+@keyframes orbDriftA{to{transform:translate3d(-8vw,7vh,0) scale(1.12)}}@keyframes orbDriftB{to{transform:translate3d(9vw,-6vh,0) scale(.9)}}@keyframes orbPulse{50%{transform:scale(1.25);opacity:.45}}
+@keyframes rippleOut{0%{width:0;height:0;opacity:.8}100%{width:190px;height:190px;opacity:0;transform:translate(-50%,-50%) scale(1.15)}}
+@media(max-width:980px){.main{padding:12px!important}.topbar,.filterbar,.panel{border-radius:17px!important}.water-orb:nth-child(1){width:70vw;height:70vw}.water-orb:nth-child(2){width:60vw;height:60vw}}
+@media(max-width:640px){.main{padding:9px!important}.panel:hover,.metric:hover,.focus-balance-card:hover{transform:none!important}.topbar:after,.sync:after,.filterbar:after,.panel:after,.metric:after{animation-duration:13s!important}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important}.panel:hover,.metric:hover,.focus-balance-card:hover{transform:none!important}.floosy-waterfield{display:none!important}}
