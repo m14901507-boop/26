@@ -149,3 +149,113 @@ html body.floosy-elite .app .main :is(.control,.edit-select,input,select,textare
 html body.floosy-elite .app .main :is(.focus-stat,.chartbox,.track,.table-wrap){background-color:rgba(3,9,20,.46)!important;background-image:none!important;border-color:rgba(255,255,255,.10)!important;color:#edf6ff!important}
 html body.floosy-elite .app .main :is(.headline h1,.headline p,.panel h2,.panel p,.filterbar label,.focus-title,.focus-copy,.focus-stat span,.focus-stat b,.metric label,.metric strong,.metric small){color:inherit!important}
 html body.floosy-elite .app .main .headline p,html body.floosy-elite .app .main .panel p,html body.floosy-elite .app .main .filterbar label,html body.floosy-elite .app .main .metric label,html body.floosy-elite .app .main .metric small{color:#a4b5ca!important}
+
+/* v7 — compact, conflict-free and GPU-conscious layout */
+html body.floosy-elite .app .main{width:auto!important;max-width:none!important;padding:14px 16px 26px!important}
+html body.floosy-elite .app .main .page{min-width:0!important;max-width:100%!important;gap:10px!important}
+html body.floosy-elite .app .main .page .kpis{
+  display:grid!important;
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  gap:8px!important;
+}
+html body.floosy-elite .app .main .page .metric{
+  min-width:0!important;min-height:76px!important;padding:10px 11px!important;border-radius:14px!important;
+  background:linear-gradient(145deg,rgba(25,41,71,.82),rgba(8,17,34,.86))!important;
+  border:1px solid rgba(145,208,255,.14)!important;
+  box-shadow:0 10px 26px rgba(0,0,0,.20),inset 0 1px rgba(255,255,255,.08)!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+html body.floosy-elite .app .main .page .metric label{font-size:10px!important;line-height:1.35!important;color:#9db0c8!important}
+html body.floosy-elite .app .main .page .metric strong{font-size:18px!important;line-height:1.25!important;color:#f6f9ff!important;margin-top:5px!important}
+html body.floosy-elite .app .main .page .metric small{font-size:8px!important;line-height:1.35!important;color:#879bb5!important;margin-top:4px!important}
+html body.floosy-elite .app .main .page .metric.green{border-top:2px solid #4de3a2!important}
+html body.floosy-elite .app .main .page .metric.green strong{color:#70f2b7!important}
+html body.floosy-elite .app .main .page .metric.red{border-top:2px solid #ff6f8d!important}
+html body.floosy-elite .app .main .page .metric.red strong{color:#ff8da5!important}
+html body.floosy-elite .app .main .page .metric.gold{border-top:2px solid #ffd56a!important}
+html body.floosy-elite .app .main .page .metric.gold strong{color:#ffe49a!important}
+html body.floosy-elite .app .main :is(.panel,.focus-balance-card,.focus-stat,.insight,.budget-edit-card,.control,.edit-select,input,select,textarea){
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+html body.floosy-elite .app .main :is(.topbar,.filterbar,.sync,.login,.focus-main,.behavior-card){
+  backdrop-filter:blur(12px) saturate(130%)!important;-webkit-backdrop-filter:blur(12px) saturate(130%)!important;
+}
+html body.floosy-elite .app .main .panel{padding:12px!important;border-radius:16px!important;box-shadow:0 14px 34px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.07)!important}
+html body.floosy-elite .app .main .panel h2{font-size:14px!important;color:#eef6ff!important;margin-bottom:9px!important}
+html body.floosy-elite .app .main .middle{gap:9px!important}
+html body.floosy-elite .app .main #focusBalanceGrid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important}
+html body.floosy-elite .app .main .focus-balance-card{min-height:70px!important;padding:9px 10px!important;background:linear-gradient(145deg,rgba(21,48,68,.84),rgba(8,24,40,.88))!important;box-shadow:0 9px 22px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.07)!important}
+html body.floosy-elite .app .main .focus-balance-card :is(.bank,.account,.date){color:#91a8c0!important}
+html body.floosy-elite .app .main .focus-balance-card .value{color:#65ebc7!important}
+html body.floosy-elite .app .main .focus-stat{background:rgba(4,12,27,.64)!important;border-color:rgba(255,255,255,.09)!important}
+html body.floosy-elite .app .main .focus-stat span{color:#91a5bf!important}
+html body.floosy-elite .app .main .focus-stat b{color:#f4f8ff!important}
+html body.floosy-elite .app .main :is(.panel,.metric,.filterbar,.sync,.login,.focus-balance-card):after{display:none!important;animation:none!important}
+html body.floosy-elite .app .main :is(.topbar,.focus-main):after{display:block!important;animation:glassReflection 18s ease-in-out infinite!important;opacity:.55!important}
+html body.floosy-elite .app .main :is(.metric,.focus-balance-card,.focus-stat,.insight):before{display:none!important}
+html body.floosy-elite .app .main .filterbar.elite-filterbar{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important;padding:11px!important}
+html body.floosy-elite .app .main .filterbar .elite-filter-head{grid-column:1/-1!important}
+html body.floosy-elite .app .main .filterbar .search{grid-column:span 2!important}
+html body.floosy-elite .app .main :is(.control,.edit-select,input,select,textarea){min-height:38px!important;color:#eef6ff!important;background:rgba(5,13,28,.86)!important;border-color:rgba(142,198,239,.16)!important;box-shadow:inset 0 1px rgba(255,255,255,.045)!important}
+html body.floosy-elite .app .main .budget-editor{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important}
+html body.floosy-elite .app .main .budget-edit-card{padding:9px!important;background:rgba(9,20,39,.82)!important;box-shadow:0 8px 20px rgba(0,0,0,.16)!important}
+html body.floosy-elite .app .main .budget-edit-card label{color:#9db0c8!important}
+html body.floosy-elite .app .main .table-wrap{background:rgba(3,9,20,.52)!important;max-width:100%!important}
+html body.floosy-elite .app .main .table th{background:#0a172b!important;color:#c6d5e8!important}
+html body.floosy-elite .app .main .table td{color:#dce7f4!important}
+html body.floosy-elite .app .main .table .description{color:#9fb1c7!important}
+.glass-performance .water-orb:nth-child(3){display:none!important}
+.glass-performance.floosy-paused *{animation-play-state:paused!important}
+
+@media(max-width:1320px){
+  html body.floosy-elite .app .main .page .kpis{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  html body.floosy-elite .app .main #focusBalanceGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+@media(max-width:850px){
+  html body.floosy-elite .app{display:block!important;min-width:0!important}
+  html body.floosy-elite .app .sidebar{position:sticky!important;top:0!important;z-index:100!important;width:100%!important;height:auto!important;padding:7px 8px!important;border-left:0!important;border-bottom:1px solid rgba(100,190,255,.18)!important;box-shadow:0 10px 28px rgba(0,0,0,.28)!important;backdrop-filter:blur(14px) saturate(130%)!important}
+  html body.floosy-elite .app .sidebar .brand{display:none!important}
+  html body.floosy-elite .app .sidebar .nav{display:flex!important;gap:6px!important;margin:0!important;padding:1px!important;overflow-x:auto!important;overflow-y:hidden!important;scroll-snap-type:x proximity;scrollbar-width:none}
+  html body.floosy-elite .app .sidebar .nav::-webkit-scrollbar{display:none}
+  html body.floosy-elite .app .sidebar .nav-btn{flex:0 0 auto!important;width:auto!important;min-width:112px!important;min-height:42px!important;padding:0 12px!important;border-radius:13px!important;text-align:center!important;white-space:nowrap!important;scroll-snap-align:start}
+  html body.floosy-elite .app .main{padding:10px!important}
+  html body.floosy-elite .app .main .topbar{padding:11px 12px!important;border-radius:16px!important}
+  html body.floosy-elite .app .main .headline h1{font-size:22px!important}
+  html body.floosy-elite .app .main .filterbar.elite-filterbar{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  html body.floosy-elite .app .main .filterbar .search{grid-column:1/-1!important}
+  html body.floosy-elite .app .main .focus-hero{grid-template-columns:1fr!important}
+  html body.floosy-elite .app .main .middle{grid-template-columns:1fr 1fr!important}
+  html body.floosy-elite .app .main .middle .insight-panel{grid-column:1/-1!important}
+}
+@media(max-width:640px){
+  html body.floosy-elite .app .main{padding:8px!important}
+  html body.floosy-elite .app .main .page{gap:8px!important}
+  html body.floosy-elite .app .main .page .kpis,
+  html body.floosy-elite .app .main #dashboard .kpis,
+  html body.floosy-elite .app .main #accounts .kpis,
+  html body.floosy-elite .app .main #focusBalanceGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+  html body.floosy-elite .app .main .page .metric{min-height:86px!important;padding:10px!important}
+  html body.floosy-elite .app .main .page .metric label{font-size:10px!important}
+  html body.floosy-elite .app .main .page .metric strong{font-size:17px!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere}
+  html body.floosy-elite .app .main .page .metric small{font-size:8px!important;overflow-wrap:anywhere}
+  html body.floosy-elite .app .main .focus-balance-card{min-height:82px!important;padding:9px!important}
+  html body.floosy-elite .app .main .filterbar.elite-filterbar{grid-template-columns:repeat(2,minmax(0,1fr))!important;padding:9px!important;gap:7px!important}
+  html body.floosy-elite .app .main .filterbar .elite-filter-head,html body.floosy-elite .app .main .filterbar .search{grid-column:1/-1!important}
+  html body.floosy-elite .app .main .middle{grid-template-columns:1fr!important}
+  html body.floosy-elite .app .main .budget-editor{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  html body.floosy-elite .app .main .topbar{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:8px!important}
+  html body.floosy-elite .app .main .topbar>div:last-child{display:flex!important;gap:6px!important;overflow-x:auto!important;max-width:58vw!important}
+  html body.floosy-elite .app .main .topbar .btn{min-height:36px!important;padding:0 9px!important;white-space:nowrap!important}
+  html body.floosy-elite .app .main .sync{padding:8px 10px!important;gap:7px!important;align-items:center!important}
+  html body.floosy-elite .app .main .sync small{font-size:8px!important;text-align:left!important}
+  html body.floosy-elite .app .main :is(.panel,.topbar,.filterbar,.sync,.login,.focus-main,.behavior-card){backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  html body.floosy-elite .app .main :is(.topbar,.focus-main):after{display:none!important;animation:none!important}
+  html body.floosy-elite:before{animation:none!important;filter:blur(26px)!important}
+  html body.floosy-elite .floosy-waterfield:after,html body.floosy-elite .water-orb:nth-child(n+2){display:none!important}
+  html body.floosy-elite .floosy-waterfield:before{animation-duration:24s!important;opacity:.58!important}
+}
+@media(max-width:380px){
+  html body.floosy-elite .app .main .page .metric{min-height:82px!important;padding:9px!important}
+  html body.floosy-elite .app .main .page .metric strong{font-size:15px!important}
+  html body.floosy-elite .app .sidebar .nav-btn{min-width:104px!important;padding:0 10px!important}
+}
