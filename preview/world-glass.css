@@ -119,7 +119,7 @@ select option{background:#0b1426!important;color:#fff!important}.sync{background
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important}.panel:hover,.metric:hover,.focus-balance-card:hover{transform:none!important}.floosy-waterfield{display:none!important}}
 
 /* Final cascade lock: the preview loads a few legacy themes dynamically. */
-html body{
+html body.floosy-elite,html body{
   background:
     radial-gradient(circle at 76% 12%,rgba(82,186,255,.22),transparent 24%),
     radial-gradient(circle at 14% 18%,rgba(155,124,255,.18),transparent 27%),
