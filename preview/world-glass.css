@@ -1,5 +1,7 @@
 /* FLOOSY — World Glass Preview System */
 :root{
+  --mx:76%;
+  --my:12%;
   --glass-bg:rgba(11,18,35,.58)!important;
   --glass-bg-strong:rgba(13,22,43,.78)!important;
   --glass-edge:rgba(255,255,255,.15)!important;
@@ -18,7 +20,7 @@
 html,body{background:#030711!important;color:var(--glass-text)!important}
 body{
   background:
-    radial-gradient(circle at var(--mx,76%) var(--my,12%),rgba(82,186,255,.22),transparent 24%),
+    radial-gradient(circle at var(--mx) var(--my),rgba(82,186,255,.22),transparent 24%),
     radial-gradient(circle at 14% 18%,rgba(155,124,255,.18),transparent 27%),
     radial-gradient(circle at 60% 86%,rgba(85,244,230,.13),transparent 26%),
     linear-gradient(145deg,#02040b 0%,#071225 40%,#050916 72%,#02040a 100%)!important;
