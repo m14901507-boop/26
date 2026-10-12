@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'finance.dart';
@@ -26,7 +27,7 @@ class FloosyApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     title: 'FLOOSY | محلي', debugShowCheckedModeBanner: false,
     locale: const Locale('ar', 'OM'),
-    builder: (c, child) => Directionality(textDirection: TextDirection.rtl, child: child!),
+    builder: (c, child) => Directionality(textDirection: ui.TextDirection.rtl, child: child!),
     theme: ThemeData(
       brightness: Brightness.dark, useMaterial3: true,
       scaffoldBackgroundColor: navy,
@@ -424,7 +425,7 @@ class _HomePageState extends State<HomePage> {
           trailing:IconButton(icon:const Icon(Icons.delete_outline,color:red),onPressed:()async{
             await db.removeSender(s['id'] as int);await reload();update((){});
           })),
-        TextField(controller:sender,textDirection:TextDirection.ltr,
+        TextField(controller:sender,textDirection:ui.TextDirection.ltr,
           decoration:const InputDecoration(labelText:'معرّف مرسل SMS (مثال BANKNAME)')),
         const SizedBox(height:10),TextField(controller:label,
           decoration:const InputDecoration(labelText:'اسم البنك')),
