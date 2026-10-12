@@ -1,0 +1,80 @@
+name: FLOOSY Android APK (offline SMS)
+
+on:
+  push:
+    branches: [floosy-android-app]
+    paths:
+      - 'floosy-android/**'
+      - '.github/workflows/floosy-android-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: floosy-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Test and package APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check FLOOSY project files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s floosy-android/pubspec.yaml
+          test -s floosy-android/lib/main.dart
+          test -s floosy-android/android/app/src/main/AndroidManifest.xml
+          test -s floosy-android/android/app/src/main/kotlin/com/floosy/mobile/MainActivity.kt
+      - name: Configure Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate standard Android scaffold
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/floosy-backup"
+          cp floosy-android/android/app/src/main/AndroidManifest.xml "$RUNNER_TEMP/floosy-backup/AndroidManifest.xml"
+          cp floosy-android/android/app/src/main/kotlin/com/floosy/mobile/MainActivity.kt "$RUNNER_TEMP/floosy-backup/MainActivity.kt"
+          flutter create --platforms=android --org com.floosy --project-name floosy_mobile floosy-android
+          cp "$RUNNER_TEMP/floosy-backup/AndroidManifest.xml" floosy-android/android/app/src/main/AndroidManifest.xml
+          mkdir -p floosy-android/android/app/src/main/kotlin/com/floosy/mobile
+          cp "$RUNNER_TEMP/floosy-backup/MainActivity.kt" floosy-android/android/app/src/main/kotlin/com/floosy/mobile/MainActivity.kt
+          grep -q 'android.permission.READ_SMS' floosy-android/android/app/src/main/AndroidManifest.xml
+          grep -q 'floosy/sms' floosy-android/android/app/src/main/kotlin/com/floosy/mobile/MainActivity.kt
+      - name: Flutter dependencies
+        working-directory: floosy-android
+        run: flutter pub get
+      - name: Unit tests
+        working-directory: floosy-android
+        run: flutter test
+      - name: Compile release APK
+        working-directory: floosy-android
+        run: flutter build apk --release --no-pub
+      - name: Check artifact integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s floosy-android/build/app/outputs/flutter-apk/app-release.apk
+          cd floosy-android/build/app/outputs/flutter-apk
+          sha256sum app-release.apk > SHA256SUMS.txt
+      - name: Upload downloadable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FLOOSY-Android-v0.2.0-APK
+          path: |
+            floosy-android/build/app/outputs/flutter-apk/app-release.apk
+            floosy-android/build/app/outputs/flutter-apk/SHA256SUMS.txt
+          retention-days: 30
+          if-no-files-found: error
