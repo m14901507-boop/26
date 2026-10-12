@@ -1,0 +1,14 @@
+name: floosy_mobile
+description: FLOOSY - Android offline financial SMS tracker (local SQLite only)
+publish_to: none
+version: 0.2.0+2
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  intl: ^0.20.2
+  sqflite: ^2.3.3+2
+  path: ^1.9.1
+flutter:
+  uses-material-design: true
