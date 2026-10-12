@@ -304,7 +304,7 @@ class _HomePageState extends State<HomePage> {
             showOk('حُفظ التصنيف داخل قاعدة بيانات الهاتف');
           }catch(e){showError(e);}
         },child:const Text('حفظ التصنيف')),
-      ]))));
+      ])))));
     word.dispose();
   }
 
@@ -433,7 +433,7 @@ class _HomePageState extends State<HomePage> {
           await db.addSender(sender.text,label.text);sender.clear();label.clear();
           await reload();update((){});
         }catch(e){showError(e);}},child:const Text('إضافة مُرسل')),
-      ]))));
+      ])))));
     sender.dispose();label.dispose();
   }
 
@@ -451,7 +451,7 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(height:12),FilledButton(onPressed:()async{try{
           await db.addItem(name.text);name.clear();await reload();update((){});
         }catch(e){showError(e);}},child:const Text('إضافة بند')),
-      ]))));
+      ])))));
     name.dispose();
   }
   Future<void> openRules()async{
@@ -517,7 +517,7 @@ class _HomePageState extends State<HomePage> {
           movementType:movement,itemId:chosen);
         if(!sheet.mounted)return;Navigator.pop(sheet);await reload();showOk('حُفظت العملية بعد مراجعتك');
       }catch(e){showError(e);}},child:const Text('اعتماد العملية')),
-    ]))));
+    ])))));
     value.dispose();
   }
 }
