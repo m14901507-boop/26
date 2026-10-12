@@ -7,7 +7,7 @@
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:usesCleartextTraffic="false">
-        <activity android:name=".MainActivity"
+        <activity android:name="com.floosy.mobile.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:theme="@android:style/Theme.Material.Light.NoActionBar"
