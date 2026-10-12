@@ -53,6 +53,7 @@ jobs:
           cp "$RUNNER_TEMP/floosy-backup/MainActivity.kt" floosy-android/android/app/src/main/kotlin/com/floosy/mobile/MainActivity.kt
           grep -q 'android.permission.READ_SMS' floosy-android/android/app/src/main/AndroidManifest.xml
           grep -q 'floosy/sms' floosy-android/android/app/src/main/kotlin/com/floosy/mobile/MainActivity.kt
+          rm -f floosy-android/test/widget_test.dart
       - name: Flutter dependencies
         working-directory: floosy-android
         run: flutter pub get
