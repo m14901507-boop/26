@@ -1,0 +1,100 @@
+name: FLOOSY SMS signed release (isolated)
+
+on:
+  push:
+    branches: [floosy-sms-release-hardening]
+    paths:
+      - 'floosy-android/**'
+      - '.github/workflows/floosy-sms-signed-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Require production signing secrets
+        env:
+          FLOOSY_KEYSTORE_BASE64: ${{ secrets.FLOOSY_KEYSTORE_BASE64 }}
+          FLOOSY_STORE_PASSWORD: ${{ secrets.FLOOSY_STORE_PASSWORD }}
+          FLOOSY_KEY_ALIAS: ${{ secrets.FLOOSY_KEY_ALIAS }}
+          FLOOSY_KEY_PASSWORD: ${{ secrets.FLOOSY_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for key in FLOOSY_KEYSTORE_BASE64 FLOOSY_STORE_PASSWORD FLOOSY_KEY_ALIAS FLOOSY_KEY_PASSWORD; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Missing required production signing secret: $key"
+              exit 1
+            fi
+          done
+      - name: Generate Android project preserving SMS bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/floosy-original"
+          cp floosy-android/android/app/src/main/AndroidManifest.xml "$RUNNER_TEMP/floosy-original/AndroidManifest.xml"
+          cp floosy-android/android/app/src/main/kotlin/com/floosy/mobile/MainActivity.kt "$RUNNER_TEMP/floosy-original/MainActivity.kt"
+          flutter create --platforms=android --org com.floosy --project-name floosy_mobile floosy-android
+          cp "$RUNNER_TEMP/floosy-original/AndroidManifest.xml" floosy-android/android/app/src/main/AndroidManifest.xml
+          mkdir -p floosy-android/android/app/src/main/kotlin/com/floosy/mobile
+          cp "$RUNNER_TEMP/floosy-original/MainActivity.kt" floosy-android/android/app/src/main/kotlin/com/floosy/mobile/MainActivity.kt
+          rm -f floosy-android/test/widget_test.dart
+      - name: Apply release signing and assert permissions
+        run: python3 floosy-android/scripts/configure_signed_release.py
+      - name: Set up private keystore and release build
+        env:
+          FLOOSY_KEYSTORE_BASE64: ${{ secrets.FLOOSY_KEYSTORE_BASE64 }}
+          ORG_GRADLE_PROJECT_FLOOSY_STORE_PASSWORD: ${{ secrets.FLOOSY_STORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_FLOOSY_KEY_ALIAS: ${{ secrets.FLOOSY_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_FLOOSY_KEY_PASSWORD: ${{ secrets.FLOOSY_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          export FLOOSY_KEYSTORE_PATH="$RUNNER_TEMP/floosy-release.jks"
+          printf '%s' "$FLOOSY_KEYSTORE_BASE64" | base64 --decode > "$FLOOSY_KEYSTORE_PATH"
+          test -s "$FLOOSY_KEYSTORE_PATH"
+          unset FLOOSY_KEYSTORE_BASE64
+          cd floosy-android
+          flutter pub get
+          flutter test
+          flutter build apk --release --no-pub
+      - name: Validate APK signature, permissions, and integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="floosy-android/build/app/outputs/flutter-apk/app-release.apk"
+          test -s "$APK"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -name apksigner | sort -V | tail -n 1)"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -name aapt | sort -V | tail -n 1)"
+          test -x "$APKSIGNER" && test -x "$AAPT"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          "$AAPT" dump badging "$APK" > "$RUNNER_TEMP/floosy-badging.txt"
+          grep -q "package: name='com.floosy.mobile'" "$RUNNER_TEMP/floosy-badging.txt"
+          grep -q "uses-permission: name='android.permission.READ_SMS'" "$RUNNER_TEMP/floosy-badging.txt"
+          if grep -E "uses-permission: name='android.permission.(SEND_SMS|RECEIVE_SMS|READ_CONTACTS|INTERNET)'" "$RUNNER_TEMP/floosy-badging.txt"; then
+            echo "::error::Unexpected sensitive/network permission in final APK"; exit 1
+          fi
+          cd floosy-android/build/app/outputs/flutter-apk
+          sha256sum app-release.apk > SHA256SUMS.txt
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FLOOSY-SMS-signed-release-APK
+          path: |
+            floosy-android/build/app/outputs/flutter-apk/app-release.apk
+            floosy-android/build/app/outputs/flutter-apk/SHA256SUMS.txt
+          retention-days: 30
+          if-no-files-found: error
