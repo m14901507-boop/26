@@ -38,3 +38,6 @@ On commits to `floosy-sms-release-hardening` (or a manually dispatched run), the
 6. Uploads an artifact named `FLOOSY-SMS-signed-release-APK`.
 
 If required secrets are absent, a failed job is **expected**, and **no signed APK** will be produced. This setup does not guarantee Play Protect clearance. Test the installed APK on your own Android device, inspect its requested permissions, and follow Google Play SMS permission policy for publication.
+
+## Build initiation
+After adding all four repository Actions secrets, push a change to this isolated branch or use the GitHub Actions **Run workflow** control. A branch push triggers the isolated workflow automatically; it will not deploy or modify the existing website. Inspect the resulting GitHub Actions job before installing the artifact.
