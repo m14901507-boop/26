@@ -1,6 +1,11 @@
 name: FLOOSY SMS signed release (isolated)
 
 on:
+  push:
+    branches: [floosy-sms-release-hardening]
+    paths:
+      - 'floosy-android/**'
+      - '.github/workflows/floosy-sms-signed-release.yml'
   workflow_dispatch:
 
 permissions:
