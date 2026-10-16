@@ -122,7 +122,7 @@ class _HomePageState extends State<HomePage> {
       .fold(0,(int sum,r)=>sum+(r['amount_baisa'] as int));
   int get income => visibleOps.where((r)=>r['movement_type']=='income')
       .fold(0,(int sum,r)=>sum+(r['amount_baisa'] as int));
-  int? get budgetTotal => budgetRows.isEmpty ? null : budgetRows.fold(0,
+  int? get budgetTotal => budgetRows.isEmpty ? null : budgetRows.fold<int>(0,
       (int sum,b)=>sum+(b['amount_baisa'] as int));
   Map<String,int> get itemTotals {
     final totals=<String,int>{};
