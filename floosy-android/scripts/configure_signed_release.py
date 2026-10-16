@@ -21,10 +21,14 @@ build = root / "android/app/build.gradle.kts"
 if not build.is_file():
     raise SystemExit("Expected Flutter-generated build.gradle.kts")
 src = build.read_text()
-if not re.search(r'applicationId\s*=\s*"com\.floosy\.mobile"', src):
-    raise SystemExit("Unexpected Android applicationId")
-if not re.search(r'namespace\s*=\s*"com\.floosy\.mobile"', src):
-    raise SystemExit("Unexpected namespace")
+# Flutter defaults to com.floosy.floosy_mobile for this project name.
+# Explicitly align generated Gradle with the existing Kotlin SMS activity.
+for field in ("applicationId", "namespace"):
+    found = re.search(r'('+field+r'\\s*=\\s*)"(com\\.floosy\\.(?:floosy_mobile|mobile))"', src)
+    if found is None:
+        raise SystemExit("Unexpected " + field + " in generated Android project")
+    src = src[:found.start(2)] + "com.floosy.mobile" + src[found.end(2):]
+
 needle = 'signingConfig = signingConfigs.getByName("debug")'
 if src.count(needle) != 1:
     raise SystemExit("Flutter signing template changed; refusing unsafe build")
