@@ -24,7 +24,7 @@ src = build.read_text()
 # Flutter defaults to com.floosy.floosy_mobile for this project name.
 # Explicitly align generated Gradle with the existing Kotlin SMS activity.
 for field in ("applicationId", "namespace"):
-    found = re.search(r'('+field+r'\\s*=\\s*)"(com\\.floosy\\.(?:floosy_mobile|mobile))"', src)
+    found = re.search(r'(' + field + r'\s*=\s*)"(com\.floosy\.(?:floosy_mobile|mobile))"', src)
     if found is None:
         raise SystemExit("Unexpected " + field + " in generated Android project")
     src = src[:found.start(2)] + "com.floosy.mobile" + src[found.end(2):]
